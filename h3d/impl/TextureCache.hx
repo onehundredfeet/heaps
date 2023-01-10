@@ -74,7 +74,7 @@ class TextureCache {
 		if( format == null ) format = defaultFormat;
 		if( t == null || t.isDisposed() || t.width != width || t.height != height || t.format != format || isCube != t.flags.has(Cube) )
 			t = lookupTarget(name,width,height,format,isCube);
-		t.depthBuffer = defaultDepth ? defaultDepthBuffer : null;
+		t.depthBuffer = defaultDepth && defaultDepthBuffer != null && defaultDepthBuffer.width == width && defaultDepthBuffer.height == height? defaultDepthBuffer : null;
 		t.setName(name);
 		position++;
 		return t;

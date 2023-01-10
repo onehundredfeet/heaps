@@ -13,6 +13,7 @@ class Convert {
 
 	public var params : Dynamic;
 
+	public var relPath : String;
 	public var srcPath : String;
 	public var dstPath : String;
 	public var originalFilename : String;

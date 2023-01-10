@@ -17,6 +17,7 @@ class ManagedBuffer {
 
 	var mem : MemoryManager;
 	public var stride(default,null) : Int;
+	public var strideBytes(default,null) : Int;
 	public var size(default,null) : Int;
 	public var flags(default, null) : haxe.EnumFlags<Buffer.BufferFlag>;
 
@@ -34,6 +35,7 @@ class ManagedBuffer {
 				this.flags.set(f);
 		this.size = size;
 		this.stride = stride;
+		this.strideBytes = stride * (this.flags.has( ByteBuffer ) ? 1 : MemoryManager.NATIVE_STRIDE);
 		this.freeList = new FreeCell(0, size, null);
 		#if !noEngine
 		this.mem = h3d.Engine.getCurrent().mem;

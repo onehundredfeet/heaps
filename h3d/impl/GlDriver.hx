@@ -4,7 +4,7 @@ import h3d.mat.Pass;
 import h3d.mat.Stencil;
 import h3d.mat.Data;
 
-#if (js||hlsdl||usegl)
+#if ((js||hlsdl||usegl) && !hlsdl_no_gl)
 
 #if js
 import hxd.impl.TypedArray;
@@ -266,6 +266,10 @@ class GlDriver extends Driver {
 			return makeCompiler().run(sh);
 		}
 		return "// vertex:\n" + compile(shader.vertex.data) + "// fragment:\n" + compile(shader.fragment.data);
+	}
+
+	public override function getNativeShaderCodeAST( shader : hxsl.Ast.ShaderData ) : String {
+		return makeCompiler().run(shader);
 	}
 
 	override public function getDriverName(details:Bool) {
@@ -1010,11 +1014,11 @@ class GlDriver extends Driver {
 		gl.bindBuffer(GL.ARRAY_BUFFER, b);
 		if( m.size * m.stride == 0 ) throw "assert";
 		#if js
-		gl.bufferData(GL.ARRAY_BUFFER, m.size * m.stride * 4, m.flags.has(Dynamic) ? GL.DYNAMIC_DRAW : GL.STATIC_DRAW);
+		gl.bufferData(GL.ARRAY_BUFFER, m.size * m.stride * MemoryManager.NATIVE_STRIDE, m.flags.has(Dynamic) ? GL.DYNAMIC_DRAW : GL.STATIC_DRAW);
 		#elseif hl
-		gl.bufferDataSize(GL.ARRAY_BUFFER, m.size * m.stride * 4, m.flags.has(Dynamic) ? GL.DYNAMIC_DRAW : GL.STATIC_DRAW);
+		gl.bufferDataSize(GL.ARRAY_BUFFER, m.size * m.stride * MemoryManager.NATIVE_STRIDE, m.flags.has(Dynamic) ? GL.DYNAMIC_DRAW : GL.STATIC_DRAW);
 		#else
-		var tmp = new Uint8Array(m.size * m.stride * 4);
+		var tmp = new Uint8Array(m.size * m.stride * MemoryManager.NATIVE_STRIDE);
 		gl.bufferData(GL.ARRAY_BUFFER, tmp, m.flags.has(Dynamic) ? GL.DYNAMIC_DRAW : GL.STATIC_DRAW);
 		#end
 		var outOfMem = outOfMemoryCheck && gl.getError() == GL.OUT_OF_MEMORY;
@@ -1211,11 +1215,11 @@ class GlDriver extends Driver {
 		gl.bindBuffer(GL.ARRAY_BUFFER, v.b);
 		#if hl
 		var data = #if hl hl.Bytes.getArray(buf.getNative()) #else buf.getNative() #end;
-		gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * 4, streamData(data,bufPos * 4,vertexCount * stride * 4), bufPos * 4 * STREAM_POS, vertexCount * stride * 4);
+		gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * MemoryManager.NATIVE_STRIDE, streamData(data,bufPos * 4,vertexCount * stride * MemoryManager.NATIVE_STRIDE), bufPos * 4 * STREAM_POS, vertexCount * stride * MemoryManager.NATIVE_STRIDE);
 		#else
 		var buf : Float32Array = buf.getNative();
 		var sub = new Float32Array(buf.buffer, bufPos * 4, vertexCount * stride);
-		gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * 4, sub);
+		gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * MemoryManager.NATIVE_STRIDE, sub);
 		#end
 		gl.bindBuffer(GL.ARRAY_BUFFER, null);
 	}
@@ -1224,10 +1228,10 @@ class GlDriver extends Driver {
 		var stride : Int = v.stride;
 		gl.bindBuffer(GL.ARRAY_BUFFER, v.b);
 		#if hl
-		gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * 4, streamData(buf.getData(),bufPos * 4,vertexCount * stride * 4), bufPos * 4 * STREAM_POS, vertexCount * stride * 4);
+		gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * MemoryManager.NATIVE_STRIDE, streamData(buf.getData(),bufPos * 4,vertexCount * stride * MemoryManager.NATIVE_STRIDE), bufPos * 4 * STREAM_POS, vertexCount * stride * MemoryManager.NATIVE_STRIDE);
 		#else
-		var sub = new Uint8Array(buf.getData(), bufPos * 4, vertexCount * stride * 4);
-		gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * 4, sub);
+		var sub = new Uint8Array(buf.getData(), bufPos * 4, vertexCount * stride * MemoryManager.NATIVE_STRIDE);
+		gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * MemoryManager.NATIVE_STRIDE, sub);
 		#end
 		gl.bindBuffer(GL.ARRAY_BUFFER, null);
 	}
@@ -1293,7 +1297,7 @@ class GlDriver extends Driver {
 		if( v.flags.has(RawFormat) ) {
 			for( a in curShader.attribs ) {
 				var pos = a.offset;
-				gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
+				gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * MemoryManager.NATIVE_STRIDE, pos * 4);
 				updateDivisor(a);
 			}
 		} else {
@@ -1315,7 +1319,7 @@ class GlDriver extends Driver {
 					offset += a.size;
 					if( offset > m.stride ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
 				}
-				gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
+				gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * MemoryManager.NATIVE_STRIDE, pos * 4);
 				updateDivisor(a);
 			}
 		}
@@ -1324,7 +1328,7 @@ class GlDriver extends Driver {
 	override function selectMultiBuffers( buffers : Buffer.BufferOffset ) {
 		for( a in curShader.attribs ) {
 			gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
-			gl.vertexAttribPointer(a.index, a.size, a.type, false, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
+			gl.vertexAttribPointer(a.index, a.size, a.type, false, buffers.buffer.buffer.stride * MemoryManager.NATIVE_STRIDE, buffers.offset * 4);
 			updateDivisor(a);
 			buffers = buffers.next;
 		}

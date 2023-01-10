@@ -1,5 +1,7 @@
 package h3d;
 
+import h3d.impl.MemoryManager;
+
 enum BufferFlag {
 	/**
 		Indicate that the buffer content will be often modified.
@@ -33,6 +35,11 @@ enum BufferFlag {
 		Use to allow to alloc buffers with >64K vertices (requires 32 bit indexes)
 	**/
 	LargeBuffer;
+
+	/**
+		All sizes are in bytes and not floats
+	**/
+	ByteBuffer;
 }
 
 class Buffer {
@@ -65,6 +72,7 @@ class Buffer {
 		if( this.flags.has(Quads) || this.flags.has(Triangles) )
 			this.flags.set(Managed);
 		#end
+		//trace ("FILTER Buffer");
 		if( !this.flags.has(NoAlloc) )
 			h3d.Engine.getCurrent().mem.allocBuffer(this, stride);
 	}
@@ -111,13 +119,17 @@ class Buffer {
 		}
 	}
 
+	inline function elementByteSize() : Int {
+		return this.flags.has(ByteBuffer) ? 1 :  MemoryManager.NATIVE_STRIDE;
+	}
 	public function uploadBytes( data : haxe.io.Bytes, dataPos : Int, vertices : Int ) {
 		var cur = this;
 		while( vertices > 0 ) {
 			if( cur == null ) throw "Too many vertices";
 			var count = vertices > cur.vertices ? cur.vertices : vertices;
+//			trace('uploading ${cur.id} - ${count * buffer.stride * elementByteSize()} bytes to ${cur.position} with count ${count} of verts ${vertices} and pos ${dataPos}');
 			cur.buffer.uploadVertexBytes(cur.position, count, data, dataPos);
-			dataPos += count * buffer.stride * 4;
+			dataPos += count * buffer.stride * elementByteSize();
 			vertices -= count;
 			cur = cur.next;
 		}
@@ -134,21 +146,23 @@ class Buffer {
 			var count = vertices + startVertice > cur.vertices ? cur.vertices - startVertice : vertices;
 			cur.buffer.readVertexBytes(cur.position + startVertice, count, bytes, bytesPosition);
 			startVertice = 0;
-			bytesPosition += count * buffer.stride * 4;
+			bytesPosition += count * buffer.stride * elementByteSize();
 			vertices -= count;
 			cur = cur.next;
 		}
 	}
 
 	public static function ofFloats( v : hxd.FloatBuffer, stride : Int, ?flags ) {
+		//trace ("FILTER of floats");
 		var nvert = Std.int(v.length / stride);
-		var b = new Buffer(nvert, stride, flags);
+		var b = new Buffer(nvert, stride , flags);
 		b.uploadVector(v, 0, nvert);
 		return b;
 	}
 
 	public static function ofSubFloats( v : hxd.FloatBuffer, stride : Int, vertices : Int, ?flags ) {
-		var b = new Buffer(vertices, stride, flags);
+		//trace ("FILTER of sub floats");
+		var b = new Buffer(vertices, stride , flags);
 		b.uploadVector(v, 0, vertices);
 		return b;
 	}

@@ -9,7 +9,8 @@ class Shader {
 	var instance : SharedShader.ShaderInstance;
 	var constBits : Int;
 	var constModified : Bool;
-
+	public var name : String;
+	
 	public function new() {
 		initialize();
 	}

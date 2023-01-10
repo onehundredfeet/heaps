@@ -312,7 +312,7 @@ class DirectXDriver extends h3d.impl.Driver {
 	}
 
 	override function allocVertexes(m:ManagedBuffer):VertexBuffer {
-		var size = m.size * m.stride * 4;
+		var size = m.size * m.stride * MemoryManager.NATIVE_STRIDE;
 		var uniform = m.flags.has(UniformBuffer);
 		var res = uniform ? dx.Driver.createBuffer(size, Dynamic, ConstantBuffer, CpuWrite, None, 0, null) : dx.Driver.createBuffer(size, Default, VertexBuffer, None, None, 0, null);
 		if( res == null ) return null;
@@ -530,8 +530,8 @@ class DirectXDriver extends h3d.impl.Driver {
 	}
 
 	override function readVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
-		var tmp = dx.Driver.createBuffer(vertexCount * v.stride * 4, Staging, None, CpuRead | CpuWrite, None, 0, null);
-		box.left = startVertex * v.stride * 4;
+		var tmp = dx.Driver.createBuffer(vertexCount * v.stride * MemoryManager.NATIVE_STRIDE, Staging, None, CpuRead | CpuWrite, None, 0, null);
+		box.left = startVertex * v.stride * MemoryManager.NATIVE_STRIDE;
 		box.top = 0;
 		box.front = 0;
 		box.right = (startVertex + vertexCount) * 4 * v.stride;
@@ -539,7 +539,7 @@ class DirectXDriver extends h3d.impl.Driver {
 		box.back = 1;
 		tmp.copySubresourceRegion(0, 0, 0, 0, v.res, 0, box);
 		var ptr = tmp.map(0, Read, true, null);
-		@:privateAccess buf.b.blit(bufPos, ptr, 0, vertexCount * v.stride * 4);
+		@:privateAccess buf.b.blit(bufPos, ptr, 0, vertexCount * v.stride * MemoryManager.NATIVE_STRIDE);
 		tmp.unmap(0);
 		tmp.release();
 	}

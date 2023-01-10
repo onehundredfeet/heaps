@@ -85,6 +85,9 @@ class Window {
 	#if heaps_vulkan
 	public static var USE_VULKAN = false;
 	#end
+	#if heaps_forge
+	public static var USE_FORGE = true;
+	#end
 	#end
 
 	function new(title:String, width:Int, height:Int, fixed:Bool = false) {
@@ -97,7 +100,11 @@ class Window {
 		#if heaps_vulkan
 		if( USE_VULKAN ) sdlFlags |= sdl.Window.SDL_WINDOW_VULKAN;
 		#end
-		window = new sdl.Window(title, width, height, sdl.Window.SDL_WINDOWPOS_CENTERED, sdl.Window.SDL_WINDOWPOS_CENTERED, sdlFlags);
+		#if heaps_forge
+		window = new sdl.WindowForge(title, width, height, sdl.Window.SDL_WINDOWPOS_CENTERED, sdl.Window.SDL_WINDOWPOS_CENTERED, sdlFlags);	
+		#else
+		window = new sdl.WindowGL(title, width, height, sdl.Window.SDL_WINDOWPOS_CENTERED, sdl.Window.SDL_WINDOWPOS_CENTERED, sdlFlags);
+		#end
 		this.windowWidth = window.width;
 		this.windowHeight = window.height;
 		#elseif hldx

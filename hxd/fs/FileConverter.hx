@@ -188,11 +188,13 @@ class FileConverter {
 		return c;
 	}
 
-	function getConvertRule( path : String ) : ConvertRule {
+	function getConvertRule( path : String, ext : String ) : ConvertRule {
 		var dirPos = path.lastIndexOf("/");
 		var cfg = loadConfig(dirPos < 0 ? "" : path.substr(0,dirPos));
 		var name = dirPos < 0 ? path : path.substr(dirPos + 1);
-		var ext = name.split(".").pop().toLowerCase();
+		if (ext == null) 
+			ext = name.split(".").pop().toLowerCase();
+		
 		for( r in cfg.rules )
 			switch( r.pt ) {
 			case Filename(f): if( name == f || path == f ) return r;
@@ -204,8 +206,8 @@ class FileConverter {
 		return null;
 	}
 
-	public function run( e : LocalFileSystem.LocalEntry ) {
-		var rule = getConvertRule(e.path);
+	public function run( e : LocalFileSystem.LocalEntry, ext : String = null ) {
+		var rule = getConvertRule(e.path, ext);
 		if( e.originalFile == null )
 			e.originalFile = e.file;
 		else
@@ -310,6 +312,7 @@ class FileConverter {
 
 		sys.FileSystem.createDirectory(fullOutPath.substr(0, fullOutPath.lastIndexOf("/")));
 
+		conv.relPath = e.file;
 		conv.srcPath = fullPath;
 		conv.dstPath = fullOutPath;
 		conv.srcBytes = content;

@@ -719,7 +719,7 @@ class GlslOut {
 		else if( version != null )
 			decl("#version " + (version > 150 ? 150 : version));
 		else
-			decl("#version 130"); // OpenGL 3.0
+			decl("#version 140"); // OpenGL 3.0
 
 		decls.push(buf.toString());
 		buf = null;

@@ -49,7 +49,7 @@ class SharedShader {
 		instanceCache = new Map();
 		consts = null;
 		globals = [];
-		if( src == "" )
+		if( src == null || src == "")
 			return;
 		data = new hxsl.Serializer().unserialize(src);
 		for( v in data.vars )

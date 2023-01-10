@@ -19,6 +19,10 @@ class LocalEntry extends FileEntry {
 		this.file = file;
 	}
 
+	public function getAbsolutePath() {
+		return fs.getAbsolutePath(this);
+	}
+
 	override function getBytes() : haxe.io.Bytes {
 		return sys.io.File.getBytes(file);
 	}
@@ -84,6 +88,7 @@ class LocalEntry extends FileEntry {
 	}
 
 	override function iterator() {
+		
 		var arr = new Array<FileEntry>();
 		for( f in sys.FileSystem.readDirectory(file) ) {
 			switch( f ) {
@@ -293,6 +298,10 @@ class LocalFileSystem implements FileSystem {
 	}
 
 	function open( path : String, check = true ) {
+		return openAs( path, null, check);
+	}
+
+	function openAs( path : String, ext: String = null, check = true ) {
 		var r = fileCache.get(path);
 		if( r != null )
 			return r.r;
@@ -303,7 +312,7 @@ class LocalFileSystem implements FileSystem {
 		f = f.split("\\").join("/");
 		if( !check || ((!isWindows || (isWindows && f == baseDir + path)) && sys.FileSystem.exists(f) && checkPath(f)) ) {
 			e = new LocalEntry(this, path.split("/").pop(), path, f);
-			convert.run(e);
+			convert.run(e, ext);
 			if( e.file == null ) e = null;
 		}
 		fileCache.set(path, {r:e});

@@ -215,7 +215,7 @@ class Checker {
 	}
 
 	public dynamic function loadShader( path : String ) : Expr {
-		throw "Not implemented";
+		throw 'Not implemented: Attempting to load ${path}';
 		return null;
 	}
 
