@@ -1,11 +1,22 @@
 package h3d.impl;
 
+
+#if heaps_gdriver
+import h3d.impl.Driver;
+#end
+
 #if macro
 typedef IndexBuffer = {};
 typedef VertexBuffer = {};
 typedef Texture = {};
 typedef DepthBuffer = {};
 typedef Query = {};
+#elseif heaps_gdriver
+typedef IndexBuffer = h3d.impl.GraphicsDriver.IndexBufferExt;
+typedef VertexBuffer = h3d.impl.GraphicsDriver.VertexBufferExt;
+typedef Texture = h3d.impl.GraphicsDriver.TextureExt;
+typedef DepthBuffer = h3d.impl.GraphicsDriver.DepthBufferExt;
+typedef Query = h3d.impl.GraphicsDriver.QueryExt;
 #elseif flash
 typedef IndexBuffer = flash.display3D.IndexBuffer3D;
 typedef VertexBuffer = Stage3dDriver.VertexWrapper;
@@ -19,21 +30,11 @@ typedef Texture = { t : js.html.webgl.Texture, width : Int, height : Int, intern
 typedef DepthBuffer = { r : js.html.webgl.Renderbuffer #if multidriver, driver : Driver #end };
 typedef Query = {};
 #elseif hlsdl
-#if heaps_forge
-typedef IndexBuffer = { b : sdl.Forge.Buffer, is32 : Bool };
-typedef VertexBuffer = { b : sdl.Forge.Buffer, stride : Int, strideBytes : Int };
-typedef DepthBuffer = { r : sdl.Forge.Renderbuffer };
-typedef Query = { q : sdl.Forge.Query, kind : QueryKind };
-typedef RenderTarget = { rt : forge.Native.RenderTarget, inBarrier : forge.Native.ResourceBarrierBuilder, outBarrier: forge.Native.ResourceBarrierBuilder, begin: forge.Native.ResourceBarrierBuilder,  present: forge.Native.ResourceBarrierBuilder, captureBuffer : forge.Native.Buffer };
-typedef Texture = { t : sdl.Forge.Texture, width : Int, height : Int, internalFmt : Int, bits : Int, bind : Int, bias : Float, rt : RenderTarget };
-
-#else
 typedef IndexBuffer = { b : sdl.GL.Buffer, is32 : Bool };
 typedef VertexBuffer = { b : sdl.GL.Buffer, stride : Int };
 typedef Texture = { t : sdl.GL.Texture, width : Int, height : Int, internalFmt : Int, pixelFmt : Int, bits : Int, bind : Int, bias : Float };
 typedef DepthBuffer = { r : sdl.GL.Renderbuffer };
 typedef Query = { q : sdl.GL.Query, kind : QueryKind };
-#end
 #elseif usegl
 typedef IndexBuffer = { b : haxe.GLTypes.Buffer, is32 : Bool };
 typedef VertexBuffer = { b : haxe.GLTypes.Buffer, stride : Int };

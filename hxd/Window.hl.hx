@@ -6,9 +6,14 @@ import hxd.impl.MouseMode;
 #error "You shouldn't use both -lib hlsdl and -lib hldx"
 #end
 
-#if hlsdl
+#if heaps_wdriver
+typedef DeviceWindow = hxd.impl.WindowDriver.WindowHandle;
+typedef DisplayMode =  hxd.impl.WindowDriver.DisplayMode;
+#elseif hlsdl
+typedef DeviceWindow = sdl.Window;
 typedef DisplayMode = sdl.Window.DisplayMode;
 #elseif hldx
+typedef DeviceWindow = dx.Window;
 typedef DisplayMode = dx.Window.DisplayMode;
 #else
 enum DisplayMode {
@@ -16,7 +21,10 @@ enum DisplayMode {
 	Borderless;
 	Fullscreen;
 }
+#error "No window implementation"
 #end
+
+
 
 typedef Monitor = {
 	name : String,
@@ -63,10 +71,9 @@ class Window {
 	public var currentMonitorIndex(get,null) : Int;
 	#end
 
+	var window : DeviceWindow;
 	#if hlsdl
-	var window : sdl.Window;
 	#elseif hldx
-	var window : dx.Window;
 	var _mouseClip : Bool;
 	#end
 	var windowWidth = 800;
@@ -85,9 +92,6 @@ class Window {
 	#if heaps_vulkan
 	public static var USE_VULKAN = false;
 	#end
-	#if heaps_forge
-	public static var USE_FORGE = true;
-	#end
 	#end
 
 	function new(title:String, width:Int, height:Int, fixed:Bool = false) {
@@ -95,21 +99,20 @@ class Window {
 		this.windowHeight = height;
 		eventTargets = new List();
 		resizeEvents = new List();
-		#if hlsdl
-		var sdlFlags = if (!fixed) sdl.Window.SDL_WINDOW_SHOWN | sdl.Window.SDL_WINDOW_RESIZABLE else sdl.Window.SDL_WINDOW_SHOWN;
-		#if heaps_vulkan
-		if( USE_VULKAN ) sdlFlags |= sdl.Window.SDL_WINDOW_VULKAN;
-		#end
-		#if heaps_forge
-		window = new sdl.WindowForge(title, width, height, sdl.Window.SDL_WINDOWPOS_CENTERED, sdl.Window.SDL_WINDOWPOS_CENTERED, sdlFlags);	
+
+		#if heaps_wdriver
+			window = hxd.impl.WindowDriver.createWindow(this, title, width, height, fixed);
 		#else
-		window = new sdl.WindowGL(title, width, height, sdl.Window.SDL_WINDOWPOS_CENTERED, sdl.Window.SDL_WINDOWPOS_CENTERED, sdlFlags);
-		#end
-		this.windowWidth = window.width;
-		this.windowHeight = window.height;
-		#elseif hldx
-		final dxFlags = if (!fixed) dx.Window.RESIZABLE else 0;
-		window = new dx.Window(title, width, height, dx.Window.CW_USEDEFAULT, dx.Window.CW_USEDEFAULT, dxFlags);
+			#if hlsdl
+			var sdlFlags = if (!fixed) sdl.Window.SDL_WINDOW_SHOWN | sdl.Window.SDL_WINDOW_RESIZABLE else sdl.Window.SDL_WINDOW_SHOWN;
+			#if heaps_vulkan
+			if( USE_VULKAN ) sdlFlags |= sdl.Window.SDL_WINDOW_VULKAN;
+			#end
+			window = new sdl.WindowGL(title, width, height, sdl.Window.SDL_WINDOWPOS_CENTERED, sdl.Window.SDL_WINDOWPOS_CENTERED, sdlFlags);
+			#elseif hldx
+			final dxFlags = if (!fixed) dx.Window.RESIZABLE else 0;
+			window = new dx.Window(title, width, height, dx.Window.CW_USEDEFAULT, dx.Window.CW_USEDEFAULT, dxFlags);
+			#end
 		#end
 	}
 
@@ -247,6 +250,7 @@ class Window {
 		var forced = onMouseModeChange(mouseMode, v);
 		if (forced != null) v = forced;
 
+
 		#if hldx
 		window.setRelativeMouseMode(v != Absolute);
 		return mouseMode = v;
@@ -277,7 +281,7 @@ class Window {
 
 		startMouseX = curMouseX;
 		startMouseY = curMouseY;
-		
+
 		return mouseMode = v;
 	}
 
