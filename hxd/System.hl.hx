@@ -160,6 +160,9 @@ class System {
 			#if !heaps_no_error_trap
 			} catch( e : Dynamic ) {
 				hl.Api.setErrorHandler(null);
+				#if heaps_rethrow_error
+				hl.Api.rethrow(e);
+				#end
 			}
 			#end
 			#if hot_reload
