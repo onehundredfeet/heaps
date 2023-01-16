@@ -6,9 +6,14 @@ import hxd.impl.MouseMode;
 #error "You shouldn't use both -lib hlsdl and -lib hldx"
 #end
 
-#if hlsdl
+#if heaps_wdriver
+typedef DeviceWindow = hxd.impl.WindowDriver.WindowHandle;
+typedef DisplayMode =  hxd.impl.WindowDriver.DisplayMode;
+#elseif hlsdl
+typedef DeviceWindow = sdl.Window;
 typedef DisplayMode = sdl.Window.DisplayMode;
 #elseif hldx
+typedef DeviceWindow = dx.Window;
 typedef DisplayMode = dx.Window.DisplayMode;
 #else
 enum DisplayMode {
