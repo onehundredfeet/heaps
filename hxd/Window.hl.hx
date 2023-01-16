@@ -6,7 +6,7 @@ import hxd.impl.MouseMode;
 #error "You shouldn't use both -lib hlsdl and -lib hldx"
 #end
 
-#if heaps_wdriver
+#if heaps_hl_wdriver
 typedef DeviceWindow = hxd.impl.WindowDriver.WindowHandle; 	// provided by the driver, not included in heaps
 typedef DisplayMode =  hxd.impl.WindowDriver.DisplayMode;	// provided by the driver, not included in heaps
 #elseif hlsdl
@@ -96,17 +96,21 @@ class Window {
 		this.windowHeight = height;
 		eventTargets = new List();
 		resizeEvents = new List();
-		#if hlsdl
-		var sdlFlags = if (!fixed) sdl.Window.SDL_WINDOW_SHOWN | sdl.Window.SDL_WINDOW_RESIZABLE else sdl.Window.SDL_WINDOW_SHOWN;
-		#if heaps_vulkan
-		if( USE_VULKAN ) sdlFlags |= sdl.Window.SDL_WINDOW_VULKAN;
-		#end
-		window = new sdl.Window(title, width, height, sdl.Window.SDL_WINDOWPOS_CENTERED, sdl.Window.SDL_WINDOWPOS_CENTERED, sdlFlags);
-		this.windowWidth = window.width;
-		this.windowHeight = window.height;
-		#elseif hldx
-		final dxFlags = if (!fixed) dx.Window.RESIZABLE else 0;
-		window = new dx.Window(title, width, height, dx.Window.CW_USEDEFAULT, dx.Window.CW_USEDEFAULT, dxFlags);
+		#if heaps_hl_wdriver
+			window = hxd.impl.WindowDriver.createWindow(this, title, width, height, fixed);
+		#else
+			#if hlsdl
+			var sdlFlags = if (!fixed) sdl.Window.SDL_WINDOW_SHOWN | sdl.Window.SDL_WINDOW_RESIZABLE else sdl.Window.SDL_WINDOW_SHOWN;
+			#if heaps_vulkan
+			if( USE_VULKAN ) sdlFlags |= sdl.Window.SDL_WINDOW_VULKAN;
+			#end
+			window = new sdl.Window(title, width, height, sdl.Window.SDL_WINDOWPOS_CENTERED, sdl.Window.SDL_WINDOWPOS_CENTERED, sdlFlags);
+			this.windowWidth = window.width;
+			this.windowHeight = window.height;
+			#elseif hldx
+			final dxFlags = if (!fixed) dx.Window.RESIZABLE else 0;
+			window = new dx.Window(title, width, height, dx.Window.CW_USEDEFAULT, dx.Window.CW_USEDEFAULT, dxFlags);
+			#end
 		#end
 	}
 
@@ -153,8 +157,9 @@ class Window {
 	}
 
 	public function resize( width : Int, height : Int ) : Void {
-		#if (hldx || hlsdl)
+		#if (hldx || hlsdl || heaps_hl_wdriver)
 		if( window.displayMode == Fullscreen ) {
+			// Need to handle driver case
 			#if (hlsdl && hl_ver >= version("1.12.0") )
 			var cds = getCurrentDisplaySetting();
 			var mode = getBestDisplayMode(width, height, framerate != null ? framerate : cds.framerate);
@@ -173,7 +178,9 @@ class Window {
 	}
 
 	public function setCursorPos( x : Int, y : Int, emitEvent : Bool = false ) : Void {
-		#if hldx
+		#if heaps_hl_wdriver
+		window.setCursorPosition(mouseMode, x, y);
+		#else if hldx
 		if (mouseMode == Absolute) window.setCursorPosition(x, y);
 		#elseif hlsdl
 		if (mouseMode == Absolute) window.warpMouse(x, y);
@@ -187,7 +194,7 @@ class Window {
 
 	@:deprecated("Use the displayMode property instead")
 	public function setFullScreen( v : Bool ) : Void {
-		#if (hldx || hlsdl)
+		#if (hldx || hlsdl || heaps_hl_wdriver)
 		window.displayMode = v ? Borderless : Windowed;
 		#end
 	}
@@ -217,7 +224,9 @@ class Window {
 	}
 
 	function get_mouseClip() : Bool {
-		#if hldx
+		#if heaps_hl_wdriver
+		return window.getMouseClip();
+		#elseif hldx
 		return _mouseClip;
 		#elseif hlsdl
 		return window.grab;
@@ -227,7 +236,9 @@ class Window {
 	}
 
 	function set_mouseClip( v : Bool ) : Bool {
-		#if hldx
+		#if heaps_hl_wdriver
+		return window.setMouseClip(v);
+		#elseif hldx
 		window.clipCursor(v);
 		return _mouseClip = v;
 		#elseif hlsdl
@@ -244,7 +255,10 @@ class Window {
 		var forced = onMouseModeChange(mouseMode, v);
 		if (forced != null) v = forced;
 
-		#if hldx
+		#if heaps_hl_wdriver
+		window.setMouseMode(v);
+		return mouseMode = v;
+		#elseif hldx
 		window.setRelativeMouseMode(v != Absolute);
 		return mouseMode = v;
 		#elseif hlsdl
@@ -263,7 +277,9 @@ class Window {
 						curMouseX = hxd.Math.iclamp(curMouseX, 0, width);
 						curMouseY = hxd.Math.iclamp(curMouseY, 0, height);
 					}
-					#if hldx
+					#if heaps_hl_wdriver
+					window.setCursorPosition(curMouseX, curMouseY);
+					#elseif hldx
 					window.setCursorPosition(curMouseX, curMouseY);
 					#elseif hlsdl
 					window.warpMouse(curMouseX, curMouseY);
@@ -278,7 +294,7 @@ class Window {
 		return mouseMode = v;
 	}
 
-	#if (hldx||hlsdl)
+	#if (hldx||hlsdl||heaps_hl_wdriver)
 
 	function get_vsync() : Bool return window.vsync;
 
@@ -291,7 +307,7 @@ class Window {
 
 	var wasBlurred : Bool;
 
-	function onEvent( e : #if hldx dx.Event #else sdl.Event #end ) : Bool {
+	function onEvent( e : #if heaps_hl_wdriver hxd.impl.WindowDriver.Event #elseif hldx dx.Event #else sdl.Event #end ) : Bool {
 		var eh = null;
 		switch( e.type ) {
 		case WindowState:
@@ -301,7 +317,7 @@ class Window {
 				windowHeight = window.height;
 				onResize(null);
 			case Focus:
-				#if hldx
+				#if (hldx || heaps_hl_wdriver)
 				// return to exclusive mode
 				if( window.displayMode == Fullscreen && wasBlurred ) {
 					window.displayMode = Borderless;
@@ -313,7 +329,7 @@ class Window {
 			case Blur:
 				wasBlurred = true;
 				event(new Event(EFocusLost));
-				#if hldx
+				#if (hldx || heaps_hl_wdriver)
 				// release all keys
 				var ev = new Event(EKeyUp);
 				for( i in 0...@:privateAccess hxd.Key.keyPressed.length )
@@ -323,7 +339,7 @@ class Window {
 					}
 				#end
 			case Enter:
-				#if hldx
+				#if (hldx || heaps_hl_wdriver)
 				// Restore cursor
 				var cur = @:privateAccess hxd.System.currentNativeCursor;
 				@:privateAccess hxd.System.currentNativeCursor = null;
@@ -366,7 +382,7 @@ class Window {
 					curMouseY = e.mouseY;
 					eh = new Event(EMove, e.mouseX, e.mouseY);
 				case Relative(callback, _):
-					#if (hldx || hlsdl)
+					#if (hldx || hlsdl || heaps_hl_wdriver)
 					var ev = new Event(EMove, e.mouseXRel, e.mouseYRel);
 					#else
 					var ev = new Event(EMove, e.mouseX - curMouseX, e.mouseY - curMouseY);
@@ -380,7 +396,7 @@ class Window {
 						eh = ev;
 					}
 				case AbsoluteUnbound(_):
-					#if (hldx || hlsdl)
+					#if (hldx || hlsdl || heaps_hl_wdriver)
 					curMouseX += e.mouseXRel;
 					curMouseY += e.mouseYRel;
 					#else
@@ -578,14 +594,14 @@ class Window {
 	#end
 
 	function get_displayMode() : DisplayMode {
-		#if (hldx || hlsdl)
+		#if (hldx || hlsdl || heaps_hl_wdriver)
 		return window.displayMode;
 		#end
 		return Windowed;
 	}
 
 	function set_displayMode( m : DisplayMode ) : DisplayMode {
-		#if (hldx || hlsdl)
+		#if (hldx || hlsdl || heaps_hl_wdriver)
 		var oldMode = window.displayMode;
 		#if (hl_ver >= version("1.12.0"))
 		var oldMode = window.displayMode;
@@ -639,12 +655,15 @@ class Window {
 
 	#if (hl_ver >= version("1.12.0"))
 	public static function getMonitors() : Array<Monitor> {
-		return [for(m in #if hldx dx.Window.getMonitors() #elseif hlsdl sdl.Sdl.getDisplays() #else [] #end) { name: m.name, width: m.right-m.left, height: m.bottom-m.top}];
+		return [for(m in #if heaps_hl_wdriver hxd.impl.WindowDriver.getMonitors() #elseif hldx dx.Window.getMonitors() #elseif hlsdl sdl.Sdl.getDisplays()  #else [] #end) { name: m.name, width: m.right-m.left, height: m.bottom-m.top}];
 	}
 
 	// If registry is set, return the default DisplaySetting when it's currently modified by the application.
 	public function getCurrentDisplaySetting(?monitorId : Int, registry : Bool = false) : DisplaySetting {
-		#if hldx
+		#if heaps_hl_wdriver
+		var mon = monitorId != null ? getMonitors()[monitorId] : null;
+		return hxd.impl.WindowDriver.getCurrentDisplaySetting(mon == null ? null : mon.name, registry);
+		#elseif hldx
 		var mon = monitorId != null ? getMonitors()[monitorId] : null;
 		return dx.Window.getCurrentDisplaySetting(mon == null ? null : mon.name, registry);
 		#elseif hlsdl
@@ -659,7 +678,10 @@ class Window {
 		var f = [];
 		if(monitorId == null)
 			monitorId = monitor;
-		#if hldx
+		#if heaps_hl_wdriver
+		var m = dx.Window.getMonitors()[monitorId];
+		var l = m != null ? hxd.impl.WindowDriver.getDisplaySettings(m.name) : [];
+		#else if hldx
 		var m = dx.Window.getMonitors()[monitorId];
 		var l = m != null ? dx.Window.getDisplaySettings(m.name) : [];
 		#elseif hlsdl
@@ -680,7 +702,10 @@ class Window {
 
 	function selectedMonitor() : Dynamic {
 		var m = if(monitor == null) currentMonitorIndex else monitor;
-		#if hldx
+
+		#if heaps_hl_wdriver
+		return hxd.impl.WindowDriver.getMonitors()[m];
+		#elseif hldx
 		return dx.Window.getMonitors()[m];
 		#elseif hlsdl
 		return sdl.Sdl.getDisplays()[m];
@@ -712,7 +737,8 @@ class Window {
 	}
 
 	function get_currentMonitorIndex() : Int {
-		#if hldx
+
+		#if (hldx || heaps_hl_wdriver)
 		var current = window.getCurrentMonitor();
 		for(i => m in getMonitors()) {
 			if(m.name == current)
@@ -728,13 +754,13 @@ class Window {
 
 	#end
 	function get_title() : String {
-		#if (hldx || hlsdl)
+		#if (hldx || hlsdl || heaps_hl_wdriver)
 		return window.title;
 		#end
 		return "";
 	}
 	function set_title( t : String ) : String {
-		#if (hldx || hlsdl)
+		#if (hldx || hlsdl || heaps_hl_wdriver)
 		return window.title = t;
 		#end
 		return "";
