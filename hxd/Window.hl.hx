@@ -7,8 +7,8 @@ import hxd.impl.MouseMode;
 #end
 
 #if heaps_wdriver
-typedef DeviceWindow = hxd.impl.WindowDriver.WindowHandle;
-typedef DisplayMode =  hxd.impl.WindowDriver.DisplayMode;
+typedef DeviceWindow = hxd.impl.WindowDriver.WindowHandle; 	// provided by the driver, not included in heaps
+typedef DisplayMode =  hxd.impl.WindowDriver.DisplayMode;	// provided by the driver, not included in heaps
 #elseif hlsdl
 typedef DeviceWindow = sdl.Window;
 typedef DisplayMode = sdl.Window.DisplayMode;
