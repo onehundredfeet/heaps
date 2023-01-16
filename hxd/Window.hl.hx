@@ -68,10 +68,9 @@ class Window {
 	public var currentMonitorIndex(get,null) : Int;
 	#end
 
+	var window : DeviceWindow;
 	#if hlsdl
-	var window : sdl.Window;
 	#elseif hldx
-	var window : dx.Window;
 	var _mouseClip : Bool;
 	#end
 	var windowWidth = 800;
