@@ -180,7 +180,7 @@ class Window {
 	public function setCursorPos( x : Int, y : Int, emitEvent : Bool = false ) : Void {
 		#if heaps_hl_wdriver
 		window.setCursorPosition(mouseMode, x, y);
-		#else if hldx
+		#elseif hldx
 		if (mouseMode == Absolute) window.setCursorPosition(x, y);
 		#elseif hlsdl
 		if (mouseMode == Absolute) window.warpMouse(x, y);
@@ -278,9 +278,9 @@ class Window {
 						curMouseY = hxd.Math.iclamp(curMouseY, 0, height);
 					}
 					#if heaps_hl_wdriver
-					window.setCursorPosition(curMouseX, curMouseY);
+					window.setCursorPosition(Absolute, curMouseX, curMouseY);
 					#elseif hldx
-					window.setCursorPosition(curMouseX, curMouseY);
+					window.setCursorPosition(Absolute, curMouseX, curMouseY);
 					#elseif hlsdl
 					window.warpMouse(curMouseX, curMouseY);
 					#end
@@ -290,7 +290,7 @@ class Window {
 
 		startMouseX = curMouseX;
 		startMouseY = curMouseY;
-		
+
 		return mouseMode = v;
 	}
 
@@ -662,7 +662,7 @@ class Window {
 	public function getCurrentDisplaySetting(?monitorId : Int, registry : Bool = false) : DisplaySetting {
 		#if heaps_hl_wdriver
 		var mon = monitorId != null ? getMonitors()[monitorId] : null;
-		return hxd.impl.WindowDriver.getCurrentDisplaySetting(mon == null ? null : mon.name, registry);
+		return hxd.impl.WindowDriver.getCurrentDisplaySetting(monitorId, mon == null ? null : mon.name, registry);
 		#elseif hldx
 		var mon = monitorId != null ? getMonitors()[monitorId] : null;
 		return dx.Window.getCurrentDisplaySetting(mon == null ? null : mon.name, registry);
@@ -679,9 +679,10 @@ class Window {
 		if(monitorId == null)
 			monitorId = monitor;
 		#if heaps_hl_wdriver
-		var m = dx.Window.getMonitors()[monitorId];
-		var l = m != null ? hxd.impl.WindowDriver.getDisplaySettings(m.name) : [];
-		#else if hldx
+		var mid =  monitorId == null ? window.currentMonitor : monitorId;
+		var m = hxd.impl.WindowDriver.getMonitors()[mid];
+		var l = m != null ? hxd.impl.WindowDriver.getDisplaySettings(mid, m.name) : [];
+		#elseif hldx
 		var m = dx.Window.getMonitors()[monitorId];
 		var l = m != null ? dx.Window.getDisplaySettings(m.name) : [];
 		#elseif hlsdl
@@ -738,7 +739,9 @@ class Window {
 
 	function get_currentMonitorIndex() : Int {
 
-		#if (hldx || heaps_hl_wdriver)
+		#if heaps_hl_wdriver
+		return window.getCurrentMonitor();
+		#elseif hldx
 		var current = window.getCurrentMonitor();
 		for(i => m in getMonitors()) {
 			if(m.name == current)
