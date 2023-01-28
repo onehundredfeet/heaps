@@ -148,9 +148,7 @@ class Linker {
 				return v2;
 			}
 		}
-		var vid = allVars.length + 1;
-		// Temp fix
-//		var vid = Tools.allocVarId();
+		var vid = Tools.allocVarId();
 		var v2 : TVar = {
 			id : vid,
 			name : vname,

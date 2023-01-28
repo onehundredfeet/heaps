@@ -292,11 +292,8 @@ typedef ShaderData = {
 }
 
 class Tools {
-	#if macro
-	static var UID = -1;
-	#else
-	static var UID = 1000;	// avoid collision with linker generated ids
-	#end
+
+	static var UID = 0;
 
 	public static var SWIZ = Component.createAll();
 	public static var MAX_CHANNELS_BITS = 3;
