@@ -219,6 +219,9 @@ class Pad {
 
 	public var connected(default, null) = true;
 	public var name(get, never) : String;
+	#if hlsdl
+	public var serial(get, never) : String;
+	#end
 	public var index : Int = -1;
 	public var config : PadConfig = DEFAULT_CONFIG;
 	public var xAxis(get,never) : Float;
@@ -316,6 +319,19 @@ class Pad {
 		return "GamePad";
 		#end
 	}
+
+	#if hlsdl
+	function get_serial() {
+		if( index < 0 ) return "Dummy GamePad";
+		#if (flash || hldx || hlsdl || usesys)
+		return d.serial;
+		#elseif js
+		return d.id;
+		#else
+		return "GamePad";
+		#end
+	}
+	#end
 
 	/**
 		Creates a new dummy unconnected game pad, which can be used instead of checking for null everytime. Use wait() to get real physical game pad access.

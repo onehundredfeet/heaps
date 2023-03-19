@@ -69,8 +69,9 @@ class Flatten {
 		}
 		varMap = new Map();
 		allocData = new Map();
-		for( v in s.vars )
+		for( v in s.vars ) {
 			gatherVar(v);
+		}
 		var prefix = switch( kind ) {
 		case Vertex: "vertex";
 		case Fragment: "fragment";
@@ -120,8 +121,13 @@ class Flatten {
 					access(a, t, vp, AOffset(a,1,eindex));
 				case TArray(t, _):
 					var stride = varSize(t, a.t);
-					if( stride == 0 || stride & 3 != 0 ) throw new Error("Dynamic access to an Array which size is not 4 components-aligned is not allowed", e.p);
-					stride >>= 2;
+					if (a.v.hasQualifier(Distinct)) {
+						trace('Stride is ${stride}');
+						stride = 1;
+					} else {
+						if( stride == 0 || stride & 3 != 0 ) throw new Error("Dynamic access to an Array which size is not 4 components-aligned is not allowed", e.p);
+						stride >>= 2;
+					}
 					eindex = toInt(mapExpr(eindex));
 					access(a, t, vp, AOffset(a,stride, stride == 1 ? eindex : { e : TBinop(OpMult,eindex,mkInt(stride,vp)), t : TInt, p : vp }));
 				default:
@@ -251,24 +257,28 @@ class Flatten {
 		return { e : TConst(CInt(v)), t : TInt, p : pos };
 	}
 
-	inline function readIndex( a : Alloc, index : Int, pos ) : TExpr {
+	inline function readIndex( a : Alloc, index : Int, pos, ot) : TExpr {
 		var offs = a.t == null ? a.pos : a.pos >> 2;
-		return { e : TArray({ e : TVar(a.g), t : a.g.type, p : pos },mkInt(offs+index,pos)), t : TVec(4,a.t), p : pos }
+		return { e : TArray({ e : TVar(a.g), t : a.g.type, p : pos },mkInt(offs+index,pos)), t : ot, p : pos }
 	}
 
-	inline function readOffset( a : Alloc, stride : Int, delta : TExpr, index : Int, pos ) : TExpr {
+	inline function readOffset( a : Alloc, stride : Int, delta : TExpr, index : Int, pos, ot ) : TExpr {
 		var index = (a.t == null ? a.pos : a.pos >> 2) + index;
 		var offset : TExpr = index == 0 ? delta : { e : TBinop(OpAdd, delta, mkInt(index, pos)), t : TInt, p : pos };
-		return { e : TArray({ e : TVar(a.g), t : a.g.type, p : pos }, offset), t : TVec(4,a.t), p:pos };
+		return { e : TArray({ e : TVar(a.g), t : a.g.type, p : pos }, offset), t : ot, p:pos };
 	}
 
 	function access( a : Alloc, t : Type, pos : Position, acc : ARead ) : TExpr {
-		inline function read(index, pos) {
+		inline function read_cast(index, pos, ot) {
 			return switch( acc ) {
-			case AIndex(a): readIndex(a, index, pos);
-			case AOffset(a, stride, delta): readOffset(a, stride, delta, index, pos);
+			case AIndex(a): readIndex(a, index, pos, ot);
+			case AOffset(a, stride, delta): readOffset(a, stride, delta, index, pos, ot);
 			}
 		}
+		inline function read(index, pos) {
+			return read_cast(index, pos, TVec(4,a.t));
+		}
+
 		switch( t ) {
 		case TMat4:
 			return { e : TCall( { e : TGlobal(Mat4), t : TFun([]), p : pos }, [
@@ -278,6 +288,9 @@ class Flatten {
 				read(3,pos),
 			]), t : TMat4, p : pos }
 		case TMat3x4:
+			if (a.v != null && a.v.hasQualifier(Distinct)) {
+				return read_cast(0,pos, TMat3x4);
+			}
 			return { e : TCall( { e : TGlobal(Mat3x4), t : TFun([]), p : pos }, [
 				read(0,pos),
 				read(1,pos),
@@ -431,7 +444,10 @@ class Flatten {
 			type : TVec(0,t),
 			kind : kind,
 		};
+
 		for( v in vars ) {
+			if (kind == Param && v.name == "bonesMatrixes")
+				trace('var pack: ${v}');
 			if( v.type.isSampler() || v.type.match(TBuffer(_)) )
 				continue;
 			switch( v.type ) {
@@ -444,6 +460,15 @@ class Flatten {
 				var a = new Alloc(g, t, -1, size);
 				a.v = v;
 				varMap.set(v, a);
+				continue;
+			}
+			if (v.hasQualifier(Distinct)) {
+				trace('Skipping flattening of distinct var ${v.name} with size ${size}');
+				outVars.push(v);
+				var a = new Alloc(v, VFloat, alloc.length, size);
+				a.v = v;
+				varMap.set(v, a);
+				allocData.set(v, [a]);
 				continue;
 			}
 			var best : Alloc = null;

@@ -249,10 +249,19 @@ class Cache {
 			throw e;
 		}
 
+		for (v in s.vars) {
+			if (v.kind == Param && v.name == "bonesMatrixes") {
+				trace('After link ${v}');
+			}
+		}
+		
 		if( batchMode ) {
 			function checkRec( v : TVar ) {
 				if( v.qualifiers != null && v.qualifiers.indexOf(PerObject) >= 0 ) {
-					if( v.qualifiers.length == 1 ) v.qualifiers = null else {
+					if( v.qualifiers.length == 1 ) {
+						v.qualifiers = null;
+						trace('Removing qualifiers');
+					}else {
 						v.qualifiers = v.qualifiers.copy();
 						v.qualifiers.remove(PerObject);
 					}
@@ -280,9 +289,21 @@ class Cache {
 		}
 		#end
 
+		for (v in s.vars) {
+			if (v.kind == Param && v.name == "bonesMatrixes") {
+				trace('Before Splitting ${v}');
+			}
+		}
+
 		var prev = s;
 		var splitter = new hxsl.Splitter();
 		var s = try splitter.split(s) catch( e : Error ) { e.msg += "\n\nin\n\n"+Printer.shaderToString(s); throw e; };
+
+		for (v in s.vertex.vars) {
+			if (v.kind == Param && v.name == "bonesMatrixes") {
+				trace('After splitting ${v}');
+			}
+		}
 
 		// params tracking
 		var paramVars = new Map();
@@ -311,9 +332,21 @@ class Cache {
 		}
 		#end
 
+		for (v in s.vertex.vars) {
+			if (v.kind == Param && v.name == "bonesMatrixes") {
+				trace('Prev ${v}');
+			}
+		}
+
 		var prev = s;
 		var s = new hxsl.Dce().dce(s.vertex, s.fragment);
 
+		for (v in s.vertex.vars) {
+			if (v.kind == Param && v.name == "bonesMatrixes") {
+				trace('After ${v}');
+			}
+		}
+		
 		#if debug
 		Printer.check(s.vertex,[prev.vertex]);
 		Printer.check(s.fragment,[prev.fragment]);
@@ -367,6 +400,7 @@ class Cache {
 
 	function buildRuntimeShader( vertex : ShaderData, fragment : ShaderData, paramVars ) {
 		var r = new RuntimeShader();
+		trace('BUILDING RUNTIME SHADER ${vertex.name} ${fragment.name}');
 		r.vertex = flattenShader(vertex, Vertex, paramVars);
 		r.vertex.vertex = true;
 		r.fragment = flattenShader(fragment, Fragment, paramVars);
@@ -411,13 +445,38 @@ class Cache {
 		var textures = [];
 		c.consts = flat.consts;
 		c.texturesCount = 0;
+		c.paramsSize = 0;
+		
+		/*
+		for (v in data.vars) {
+			if (v.kind != Param) continue;
+			if (v.name == "vertexParams" || v.name == "fragmentParams")continue; // Already covered below
+			
+			switch(v.type) {
+				case TArray(TMat3x4, SConst(size)):
+					c.paramsSize += size * 3 * 4;
+//					var ap = new AllocParam(v.name, 0, -1, p.index, a.v.type);
+
+				default: 
+					throw 'Unsupported distinct parameter type ${v.type}';
+			}
+
+			var p = params.get(v.id);
+			if( p == null ) {
+				throw 'Parameter ${v.name} not found';
+			}
+
+		}
+		*/
 		for( g in flat.allocData.keys() ) {
 			var alloc = flat.allocData.get(g);
 			switch( g.kind ) {
 			case Param:
 				var out = [];
 				var count = 0;
+				trace('G is ${g}');
 				for( a in alloc ) {
+					trace('\t a is ${a} v is ${a.v}');
 					if( a.v == null ) continue; // padding
 					var p = params.get(a.v.id);
 					if( p == null ) {
@@ -445,8 +504,19 @@ class Cache {
 					textures.push({ t : t, all : out });
 					c.texturesCount += count;
 				case TArray(TVec(4, VFloat), SConst(size)):
-					c.params = out[0];
-					c.paramsSize = size;
+					trace('B PARAMS SIZE ${out[0].name} ${size} ${out.length} ${g.type}');
+					if (c.params == null)
+						c.params = out[0];
+					else 
+						c.params.next = out[0];
+					c.paramsSize += size;
+				case TArray(TMat3x4, SConst(size)):
+					trace('B PARAMS SIZE ${out[0].name} ${size} ${out.length} ${g.type}');
+					if (c.params == null)
+						c.params = out[0];
+					else 
+						c.params.next = out[0];
+					c.paramsSize += size * 3 * 4;
 				case TArray(TBuffer(_), _):
 					c.buffers = out[0];
 					c.bufferCount = out.length;
@@ -483,6 +553,7 @@ class Cache {
 		if( c.buffers == null )
 			c.bufferCount = 0;
 		c.data = data;
+		trace('shader kind ${kind} Result is paramSize ${c.paramsSize} globals size ${c.globalsSize}');
 		return c;
 	}
 

@@ -66,6 +66,8 @@ class MacroParser {
 			v.qualifiers.push(Nullable);
 		case "perObject":
 			v.qualifiers.push(PerObject);
+		case "distinct":
+			v.qualifiers.push(Distinct);
 		case "shared":
 			v.qualifiers.push(Shared);
 		case "lowp":

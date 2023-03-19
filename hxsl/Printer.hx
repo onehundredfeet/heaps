@@ -55,6 +55,7 @@ class Printer {
 				case Private: "private";
 				case Nullable: "nullable";
 				case PerObject: "perObject";
+				case Distinct: "distinct";
 				case Name(n): "name('" + n + "')";
 				case Shared: "shared";
 				case Precision(p): p.getName().toLowerCase() + "p";

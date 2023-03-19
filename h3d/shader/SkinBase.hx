@@ -11,7 +11,7 @@ class SkinBase extends hxsl.Shader {
 		@const var MaxBones : Int;
 		@const @param var fourBonesByVertex = false;
 
-		@ignore @param var bonesMatrixes : Array<Mat3x4,MaxBones>;
+		@distinct @ignore @param var bonesMatrixes : Array<Mat3x4,MaxBones>;
 
 	};
 

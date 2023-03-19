@@ -691,6 +691,7 @@ class Checker {
 						default:
 						}
 				}
+				
 				var einit = null;
 				if( v.expr != null ) {
 					if( v.kind != Param )
@@ -711,6 +712,7 @@ class Checker {
 				if( einit != null )
 					inits.push({ v : v, e : einit });
 				vars.set(v.name, v);
+
 			}
 		case ECall( { expr : EIdent("import") }, [e]):
 			var path = [];
@@ -760,11 +762,13 @@ class Checker {
 	}
 
 	function makeVar( v : VarDecl, pos : Position, ?parent : TVar ) {
+
 		var tv : TVar = {
 			id : Tools.allocVarId(),
 			name : v.name,
 			kind : v.kind,
 			type : v.type,
+			qualifiers : v.qualifiers,
 		};
 		if( parent != null )
 			tv.parent = parent;
@@ -786,6 +790,7 @@ class Checker {
 			for( q in v.qualifiers )
 				switch( q ) {
 				case Private:
+				case Distinct: 
 				case Const(_):
 					var p = parent;
 					while( p != null ) {
@@ -827,6 +832,7 @@ class Checker {
 		}
 		if( tv.type != null )
 			tv.type = makeVarType(tv.type, tv, pos);
+
 		return tv;
 	}
 

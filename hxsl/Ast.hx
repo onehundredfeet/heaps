@@ -86,6 +86,8 @@ enum VarQualifier {
 	Doc( s : String );
 	Borrow( source : String );
 	Sampler( name : String );
+	// Added by RC
+	Distinct; // Will not be flattened
 }
 
 enum Prec {

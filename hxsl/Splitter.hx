@@ -62,6 +62,8 @@ class Splitter {
 						name : v.name,
 						kind : Local,
 						type : v.type,
+						qualifiers : v.qualifiers,
+						// [RC] Should there be qualifiers here? 
 					};
 					uniqueName(nv);
 					varMap.set(inf.origin, nv);
@@ -233,6 +235,7 @@ class Splitter {
 						name : v.name,
 						kind : v.kind,
 						type : v.type,
+						qualifiers : v.qualifiers,
 					};
 					uniqueName(nv);
 				}
