@@ -84,7 +84,8 @@ class Flatten {
 			packTextures(prefix + "Textures", allVars, TSampler2D)
 			.concat(packTextures(prefix+"TexturesCube", allVars, TSamplerCube))
 			.concat(packTextures(prefix+"TexturesArray", allVars, TSampler2DArray))
-			.concat(packTextures(prefix+"Channels", allVars, TChannel(1)));
+			;
+//			.concat(packTextures(prefix+"Channels", allVars, TChannel(1))))
 		packBuffers(allVars);
 		var funs = [for( f in s.funs ) mapFun(f, mapExpr)];
 		return {
@@ -382,7 +383,7 @@ class Flatten {
 			var count = 1;
 			if( v.type != t ) {
 				switch( v.type ) {
-				case TChannel(_) if( t.match(TChannel(1)) ): //continue;
+				case TChannel(_) if( t.match(TSampler2D) ): //continue;
 				case TArray(t2,SConst(n)) if( t2 == t ):
 					count = n;
 				default:
