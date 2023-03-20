@@ -476,7 +476,7 @@ class Cache {
 				var count = 0;
 				trace('G is ${g}');
 				for( a in alloc ) {
-					trace('\t a is ${a} v is ${a.v}');
+					//trace('\t a is ${a} v is ${a.v}');
 					if( a.v == null ) continue; // padding
 					var p = params.get(a.v.id);
 					if( p == null ) {

@@ -116,6 +116,7 @@ class MacroParser {
 			case "Channel2": return TChannel(2);
 			case "Channel3": return TChannel(3);
 			case "Channel4": return TChannel(4);
+			case "Texture2D": return TTexture2D;
 			}
 		case TPath( { pack : [], name : name = ("Array"|"Buffer"), sub : null, params : [t, size] } ):
 			var t = switch( t ) {

@@ -26,7 +26,7 @@ class Macros {
 				fields.push({ pos : pos, name : v.name+"Channel", kind : FVar(macro : hxsl.Channel) });
 			}
 			TAnonymous(fields);
-		case TSampler2D:
+		case TSampler2D, TTexture2D:
 			macro : hxsl.Types.Sampler2D;
 		case TSampler2DArray:
 			macro : hxsl.Types.Sampler2DArray;

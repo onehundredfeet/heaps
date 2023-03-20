@@ -20,6 +20,7 @@ enum Type {
 	TBuffer( t : Type, size : SizeDecl );
 	TChannel( size : Int );
 	TMat2;
+	TTexture2D;
 }
 
 enum VecType {
@@ -540,7 +541,7 @@ class Tools {
 		case TMat4: 16;
 		case TMat3x4: 12;
 		case TBytes(s): s;
-		case TBool, TString, TSampler2D, TSampler2DArray, TSamplerCube, TFun(_): 0;
+		case TBool, TString, TSampler2D, TSampler2DArray, TSamplerCube, TTexture2D, TFun(_): 0;
 		case TArray(t, SConst(v)), TBuffer(t, SConst(v)): size(t) * v;
 		case TArray(_, SVar(_)), TBuffer(_): 0;
 		}

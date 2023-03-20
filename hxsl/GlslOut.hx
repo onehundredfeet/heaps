@@ -161,6 +161,8 @@ class GlslOut {
 			throw "assert";
 		case TChannel(n):
 			add("channel" + n);
+		case TTexture2D:
+			add("texture2D");
 		}
 	}
 
