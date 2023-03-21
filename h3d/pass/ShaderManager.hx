@@ -191,8 +191,8 @@ class ShaderManager {
 		inline function fill(buf:h3d.shader.Buffers.ShaderBuffers, s:hxsl.RuntimeShader.RuntimeShaderData) {
 			var g = s.globals;
 			var ptr = getPtr(buf.globals);
-			trace('FILLING GLOBALS ${g} ${ptr}');
 			while( g != null ) {
+				trace('FILLING GLOBALS ${g.gid} ${g.path} ${ptr}');
 				var v = globals.fastGet(g.gid);
 				if( v == null ) {
 					if( g.path == "__consts__" ) {

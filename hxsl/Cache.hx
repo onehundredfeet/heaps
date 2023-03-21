@@ -470,6 +470,38 @@ class Cache {
 		*/
 		for( g in flat.allocData.keys() ) {
 			var alloc = flat.allocData.get(g);
+
+			// filter textures first 
+			switch( g.type ) {
+				case TSampler2D, TChannel(_), TSamplerCube:
+					var a = alloc[0];
+					switch( g.kind ) {
+						case Param:							
+							var p = params.get(g.id);
+							
+							trace('A PARAMETER UNIQUE ${g} ${g.id} ${a.pos} ${a.size}');
+							c.texturesCount += 1;
+							var ap = new AllocParam(g.name, g.id, p.instance, p.index, g.type);
+							textures.push({ t : g.type, all : [ap] });
+									trace('Adding normal texture paramter ${alloc.length} ${g.id} ${p}');
+						case Global:
+							var ag = new AllocGlobal(-1, getPath(g), g.type);
+							var ap = new AllocParam(g.name, g.id, -1, -1, g.type);
+							ap.perObjectGlobal = new AllocGlobal( -1, getPath(g), g.type);
+															
+							trace('A GLOBAL UNIQUE path ${getPath(g)} | id ${g.id} |  pos ${a.pos} | size ${a.size}');
+
+							c.texturesCount += 1;
+							textures.push({ t : g.type, all : [ap] });
+
+						default: throw 'Invalid kind ${g.kind}';
+					}
+
+
+					continue;
+				default:
+			}
+
 			switch( g.kind ) {
 			case Param:
 				var out = [];
@@ -500,15 +532,6 @@ class Cache {
 				for( i in 0...out.length - 1 )
 					out[i].next = out[i + 1];
 				switch( g.type ) {
-				case TSampler2D, TChannel(_), TSamplerCube:
-					var p = params.get(g.id);
-
-					trace('Adding normal texture ${alloc.length} / ${out.length} ${g.id} ${p}');
-					var a = alloc[0];
-					trace('A ${a.v} ${g.id} ${a.pos} ${a.size}');
-					c.texturesCount += 1;
-					var ap = new AllocParam(g.name, g.id, p.instance, p.index, g.type);
-					textures.push({ t : g.type, all : [ap] });
 				case TArray(t, _) if( t.isSampler() ):
 					textures.push({ t : t, all : out });
 					c.texturesCount += count;
@@ -540,9 +563,9 @@ class Cache {
 					c.globals = out[0];
 					c.globalsSize = size;
 				default:
-					throw "assert";
+					throw 'invalid type ${g.type}';
 				}
-			default: throw "assert";
+			default: throw 'invalid kind ${g.kind}';
 			}
 		}
 		if( textures.length > 0 ) {

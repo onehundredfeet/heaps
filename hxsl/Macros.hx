@@ -46,7 +46,8 @@ class Macros {
 			var t = makeType(t);
 			macro : Array<$t>;
 		case TChannel(_):
-			macro : hxsl.Types.ChannelTextureType;
+//			macro : hxsl.Types.ChannelTextureType;
+			macro : hxsl.Types.Sampler2D;
 		case TFun(_):
 			throw "assert";
 		case TBuffer(_):

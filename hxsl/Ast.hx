@@ -397,7 +397,7 @@ class Tools {
 
 	public static function isSampler( t : Type ) {
 		return switch( t ) {
-		case TSampler2D, TSamplerCube, TSampler2DArray, TChannel(_):
+		case TSampler2D, TSamplerCube, TSampler2DArray, TChannel(_), TTexture2D:
 			true;
 		default:
 			false;

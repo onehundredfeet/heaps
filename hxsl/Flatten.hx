@@ -480,8 +480,10 @@ class Flatten {
 		for (v in vars) {
 			if (kind == Param && v.name == "bonesMatrixes")
 				trace('var pack: ${v}');
-			if (v.type.isSampler() || v.type.match(TBuffer(_)))
+			if (v.type.isSampler() || v.type.match(TBuffer(_))) {
+				trace('Ignoring global ${v.name}');
 				continue;
+			}
 			switch (v.type) {
 				case TArray(t, _) if (t.isSampler()):
 					continue;
