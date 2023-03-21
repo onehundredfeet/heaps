@@ -91,6 +91,7 @@ class Default extends Base {
 	}
 
 	static public dynamic function onShaderError(e: Dynamic, p: PassObject) {
+	
 		throw e;
 	}
 
@@ -118,7 +119,12 @@ class Default extends Base {
 				prevShader = p.shader;
 				try {
 					ctx.engine.selectShader(p.shader);
-				} catch(e : Dynamic) {
+				} catch(e : haxe.Exception) {
+					trace('Exception: ' + e.message );
+					onShaderError(e, p);
+					continue;
+				}
+				catch (e : Dynamic) {
 					onShaderError(e, p);
 					continue;
 				}
