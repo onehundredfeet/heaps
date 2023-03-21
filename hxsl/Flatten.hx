@@ -74,13 +74,14 @@ class Flatten {
 			gatherVar(v);
 		}
 		var prefix = switch (kind) {
-			case Vertex: "_Vert";
-			case Fragment: "_Frag";
+			case Vertex: "flatVert";
+			case Fragment: "flatFrag";
 			default: throw "assert";
 		}
 		pack(prefix + "Globals", Global, globals, VFloat);
 		pack(prefix + "Params", Param, params, VFloat);
 		var allVars = globals.concat(params);
+		#if PACK_TEXTURES
 		var textures = packTextures(prefix + "Textures2D", allVars,
 			TSampler2D).concat(packTextures(prefix + "TexturesCube", allVars, TSamplerCube))
 			.concat(packTextures(prefix + "TexturesArray", allVars, TSampler2DArray))
@@ -89,7 +90,9 @@ class Flatten {
 		for (t in textures) {
 			trace('FLATTEN texture ${t.g}');
 		}
+		#end
 		packBuffers(allVars);
+		transferDistinctTextures(allVars);
 		var funs = [for (f in s.funs) mapFun(f, mapExpr)];
 		return {
 			name: s.name,
@@ -312,11 +315,11 @@ class Flatten {
 					}
 				];
 				return {e: TArrayDecl(earr), t: t, p: pos};
+			case TSampler2D, TSamplerCube, TChannel(_):
+				return {e: TVar(a.g), t: a.g.type, p: pos};
 			default:
 				if (t.isSampler()) {
-					var e = read(0, pos);
-					e.t = t;
-					return e;
+					throw "Should be covered";
 				}
 				var size = varSize(t, a.t);
 				if (size > 4)
@@ -381,6 +384,13 @@ class Flatten {
 		return e;
 	}
 
+	function transferDistinctTextures( vars:Array<TVar>) {
+		for (v in vars) {
+			if (!v.type.isSampler())
+				continue;
+			addVar(v,VFloat, 0, 1);
+		}
+	}
 	function packTextures(name:String, vars:Array<TVar>, t:Type) {
 		var alloc = new Array<Alloc>();
 		var g:TVar = {
@@ -451,6 +461,13 @@ class Flatten {
 		allocData.set(g, alloc);
 	}
 
+	function addVar(v : TVar, t : VecType, pos, size) {
+		outVars.push(v);
+		var a = new Alloc(v, t, pos, size);
+		varMap.set(v, a);
+		allocData.set(v, [a]);
+		return a;
+	}
 	function pack(name:String, kind:VarKind, vars:Array<TVar>, t:VecType) {
 		var alloc = new Array<Alloc>(), apos = 0;
 		var g:TVar = {
@@ -480,11 +497,7 @@ class Flatten {
 			}
 			if (v.hasQualifier(Distinct)) {
 				trace('Skipping flattening of distinct var ${v.name} with size ${size}');
-				outVars.push(v);
-				var a = new Alloc(v, VFloat, alloc.length, size);
-				a.v = v;
-				varMap.set(v, a);
-				allocData.set(v, [a]);
+				addVar(v,VFloat, 0, size);
 				continue;
 			}
 			var best:Alloc = null;

@@ -763,6 +763,7 @@ class Checker {
 
 	function makeVar( v : VarDecl, pos : Position, ?parent : TVar ) {
 
+		
 		var tv : TVar = {
 			id : Tools.allocVarId(),
 			name : v.name,

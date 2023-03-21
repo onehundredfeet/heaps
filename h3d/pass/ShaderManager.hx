@@ -183,7 +183,7 @@ class ShaderManager {
 		var n = p.instance;
 		while( --n > 0 ) si = si.next;
 		var v = si.s.getParamValue(p.index);
-		if( v == null && !opt ) throw "Missing param value " + si.s + "." + p.name;
+		if( v == null && !opt ) throw "C Missing param value " + si.s + "." + p.name;
 		return v;
 	}
 
@@ -191,6 +191,7 @@ class ShaderManager {
 		inline function fill(buf:h3d.shader.Buffers.ShaderBuffers, s:hxsl.RuntimeShader.RuntimeShaderData) {
 			var g = s.globals;
 			var ptr = getPtr(buf.globals);
+			trace('FILLING GLOBALS ${g} ${ptr}');
 			while( g != null ) {
 				var v = globals.fastGet(g.gid);
 				if( v == null ) {
@@ -230,7 +231,7 @@ class ShaderManager {
 				return v;
 			}
 			var v = getInstance(p.instance).getParamValue(p.index);
-			if( v == null && !opt ) throw "Missing param value " + shaders.s + "." + p.name;
+			if( v == null && !opt ) throw 'Instance ${p.instance} Missing param value ' + shaders.s + " . " + p.name + '[${p.index}]';
 			return v;
 		}
 		inline function fill(buf:h3d.shader.Buffers.ShaderBuffers, s:hxsl.RuntimeShader.RuntimeShaderData) {
@@ -246,7 +247,7 @@ class ShaderManager {
 						continue;
 					}
 					v = getInstance(p.instance).getParamValue(p.index);
-					if( v == null ) throw "Missing param value " + curInstanceValue + "." + p.name;
+					if( v == null ) throw "B Missing param value " + curInstanceValue + " . " + p.name + " instance " + p.instance;
 				} else
 					v = getParamValue(p, shaders);
 				fillRec(v, p.type, ptr, p.pos);

@@ -500,6 +500,15 @@ class Cache {
 				for( i in 0...out.length - 1 )
 					out[i].next = out[i + 1];
 				switch( g.type ) {
+				case TSampler2D, TChannel(_), TSamplerCube:
+					var p = params.get(g.id);
+
+					trace('Adding normal texture ${alloc.length} / ${out.length} ${g.id} ${p}');
+					var a = alloc[0];
+					trace('A ${a.v} ${g.id} ${a.pos} ${a.size}');
+					c.texturesCount += 1;
+					var ap = new AllocParam(g.name, g.id, p.instance, p.index, g.type);
+					textures.push({ t : g.type, all : [ap] });
 				case TArray(t, _) if( t.isSampler() ):
 					textures.push({ t : t, all : out });
 					c.texturesCount += count;
@@ -537,6 +546,8 @@ class Cache {
 			}
 		}
 		if( textures.length > 0 ) {
+			trace('reordering textures ${textures.length}....');
+
 			// relink in order based on type
 			textures.sort(function(t1,t2) return t1.t.getIndex() - t2.t.getIndex());
 			c.textures = textures[0].all[0];
@@ -545,6 +556,9 @@ class Cache {
 				var prev = prevAll[prevAll.length - 1];
 				prev.next = textures[i].all[0];
 			}
+			trace('Initial texture ${c.textures}');
+		} else {
+			trace('No textures');
 		}
 		if( c.globals == null )
 			c.globalsSize = 0;
@@ -553,7 +567,7 @@ class Cache {
 		if( c.buffers == null )
 			c.bufferCount = 0;
 		c.data = data;
-		trace('shader kind ${kind} Result is paramSize ${c.paramsSize} globals size ${c.globalsSize}');
+		trace('shader kind ${kind} Result is paramSize ${c.paramsSize} globals size ${c.globalsSize} , ${c.texturesCount} textures');
 		return c;
 	}
 

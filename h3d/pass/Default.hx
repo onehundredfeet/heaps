@@ -121,6 +121,7 @@ class Default extends Base {
 					ctx.engine.selectShader(p.shader);
 				} catch(e : haxe.Exception) {
 					trace('Exception: ' + e.message );
+					trace(e.stack);
 					onShaderError(e, p);
 					continue;
 				}
