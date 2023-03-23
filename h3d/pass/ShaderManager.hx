@@ -192,7 +192,7 @@ class ShaderManager {
 			var g = s.globals;
 			var ptr = getPtr(buf.globals);
 			while( g != null ) {
-				trace('FILLING GLOBALS ${g.gid} ${g.path} ${ptr}');
+				//trace('FILLING GLOBALS ${g.gid} ${g.path} ${ptr}');
 				var v = globals.fastGet(g.gid);
 				if( v == null ) {
 					if( g.path == "__consts__" ) {
