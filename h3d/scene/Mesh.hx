@@ -44,6 +44,8 @@ class Mesh extends Object {
 		var tmp = primitive.getBounds().clone();
 		tmp.transform(absPos);
 		b.add(tmp);
+
+//		trace('FOW Mesh.getBoundsRec: ' + b);
 		return b;
 	}
 

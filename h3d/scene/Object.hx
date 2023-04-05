@@ -405,6 +405,8 @@ class Object {
 		}
 		for( c in children )
 			c.getBoundsRec(b);
+
+//		trace('FOW getBoundsRec ' + this.name + ' ' + b);
 		return b;
 	}
 

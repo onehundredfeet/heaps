@@ -479,17 +479,17 @@ class Cache {
 						case Param:							
 							var p = params.get(g.id);
 							
-							trace('A PARAMETER UNIQUE ${g} ${g.id} ${a.pos} ${a.size}');
+							//trace('A PARAMETER UNIQUE ${g} ${g.id} ${a.pos} ${a.size}');
 							c.texturesCount += 1;
 							var ap = new AllocParam(g.name, g.id, p.instance, p.index, g.type);
 							textures.push({ t : g.type, all : [ap] });
-									trace('Adding normal texture paramter ${alloc.length} ${g.id} ${p}');
+									//trace('Adding normal texture paramter ${alloc.length} ${g.id} ${p}');
 						case Global:
 							var ag = new AllocGlobal(-1, getPath(g), g.type);
 							var ap = new AllocParam(g.name, g.id, -1, -1, g.type);
 							ap.perObjectGlobal = new AllocGlobal( -1, getPath(g), g.type);
 															
-							trace('A GLOBAL UNIQUE path ${getPath(g)} | id ${g.id} |  pos ${a.pos} | size ${a.size}');
+							//trace('A GLOBAL UNIQUE path ${getPath(g)} | id ${g.id} |  pos ${a.pos} | size ${a.size}');
 
 							c.texturesCount += 1;
 							textures.push({ t : g.type, all : [ap] });
@@ -569,7 +569,7 @@ class Cache {
 			}
 		}
 		if( textures.length > 0 ) {
-			trace('reordering textures ${textures.length}....');
+			//trace('reordering textures ${textures.length}....');
 
 			// relink in order based on type
 			textures.sort(function(t1,t2) return t1.t.getIndex() - t2.t.getIndex());
@@ -579,9 +579,9 @@ class Cache {
 				var prev = prevAll[prevAll.length - 1];
 				prev.next = textures[i].all[0];
 			}
-			trace('Initial texture ${c.textures}');
+			//trace('Initial texture ${c.textures}');
 		} else {
-			trace('No textures');
+			//trace('No textures');
 		}
 		if( c.globals == null )
 			c.globalsSize = 0;
@@ -590,7 +590,7 @@ class Cache {
 		if( c.buffers == null )
 			c.bufferCount = 0;
 		c.data = data;
-		trace('shader kind ${kind} Result is paramSize ${c.paramsSize} globals size ${c.globalsSize} , ${c.texturesCount} textures');
+		//trace('shader kind ${kind} Result is paramSize ${c.paramsSize} globals size ${c.globalsSize} , ${c.texturesCount} textures');
 		return c;
 	}
 
