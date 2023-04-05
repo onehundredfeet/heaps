@@ -105,9 +105,11 @@ class HtmlText extends Text {
 			var oldX = absX, oldY = absY;
 			absX += dropShadow.dx * matA + dropShadow.dy * matC;
 			absY += dropShadow.dx * matB + dropShadow.dy * matD;
-			if( dropMatrix == null )
+			if( dropMatrix == null ) {
 				dropMatrix = new h3d.shader.ColorMatrix();
-			addShader(dropMatrix);
+				addShader(dropMatrix);
+			}
+			dropMatrix.enabled = true;
 			var m = dropMatrix.matrix;
 			m.zero();
 			m._41 = ((dropShadow.color >> 16) & 0xFF) / 255;
@@ -115,12 +117,26 @@ class HtmlText extends Text {
 			m._43 = (dropShadow.color & 0xFF) / 255;
 			m._44 = dropShadow.alpha;
 			glyphs.drawWith(ctx, this);
-			removeShader(dropMatrix);
+			dropMatrix.enabled = false;
 			absX = oldX;
 			absY = oldY;
-		} else
+		} else {
+			removeShader(dropMatrix);
 			dropMatrix = null;
+		}
 		glyphs.drawWith(ctx,this);
+	}
+
+	override function getShader< T:hxsl.Shader >( stype : Class<T> ) : T {
+		if (shaders != null) for( s in shaders ) {
+			var c = Std.downcast(s, h3d.shader.ColorMatrix);
+			if ( c != null && !c.enabled )
+				continue;
+			var s = hxd.impl.Api.downcast(s, stype);
+			if( s != null )
+				return s;
+		}
+		return null;
 	}
 
 	/**
