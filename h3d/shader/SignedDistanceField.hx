@@ -37,8 +37,12 @@ class SignedDistanceField extends hxsl.Shader {
 				else if (channel == 3) textureSample.a;
 				else median(textureSample.r, textureSample.g, textureSample.b);
 
-			var smoothVal = autoSmoothing ? abs(fwidth(distance) * 0.5) : smoothing;
-			textureColor = vec4(1.0, 1.0, 1.0, smoothstep(alphaCutoff - smoothVal, alphaCutoff + smoothVal, distance));
+			var screenPxDistance = smoothing * (distance - 0.5);
+			var opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
+			textureColor = vec4(1.0, 1.0, 1.0, opacity);
+
+			//var smoothVal = autoSmoothing ? abs(fwidth(distance) * 0.5) : smoothing;
+			//textureColor = vec4(1.0, 1.0, 1.0, smoothstep(alphaCutoff - smoothVal, alphaCutoff + smoothVal, distance));
 		}
 	}
 
