@@ -157,6 +157,12 @@ class TextInput extends Text {
 		// disable (don't allow multiline textinput for now)
 	}
 
+	inline function isCommandKeyDown() {
+		if (Sys.systemName() == "Mac")
+			return K.isDown(K.LEFT_WINDOW_KEY) || K.isDown(K.RIGHT_WINDOW_KEY);
+
+		return K.isDown(K.CTRL);
+	}
 	function handleKey( e : hxd.Event ) {
 		if( e.cancel || cursorIndex < 0 )
 			return;
@@ -230,18 +236,18 @@ class TextInput extends Text {
 				onChange();
 			}
 			return;
-		case K.A if (K.isDown(K.CTRL)):
+		case K.A if (isCommandKeyDown()):
 			if (text != "") {
 				cursorIndex = text.length;
 				selectionRange = {start: 0, length: text.length};
 				selectionSize = 0;
 			}
 			return;
-		case K.C if (K.isDown(K.CTRL)):
+		case K.C if (isCommandKeyDown()):
 			if( text != "" && selectionRange != null ) {
 				hxd.System.setClipboardText(text.substr(selectionRange.start, selectionRange.length));
 			}
-		case K.X if (K.isDown(K.CTRL)):
+		case K.X if (isCommandKeyDown()):
 			if( text != "" && selectionRange != null ) {
 				if(hxd.System.setClipboardText(text.substr(selectionRange.start, selectionRange.length))) {
 					if( !canEdit ) return;
@@ -250,7 +256,7 @@ class TextInput extends Text {
 					onChange();
 				}
 			}
-		case K.V if (K.isDown(K.CTRL)):
+		case K.V if (isCommandKeyDown()):
 			if( !canEdit ) return;
 			var t = hxd.System.getClipboardText();
 			if( t != null && t.length > 0 ) {
