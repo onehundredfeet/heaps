@@ -481,7 +481,7 @@ class Flatten {
 			if (kind == Param && v.name == "bonesMatrixes")
 				trace('var pack: ${v}');
 			if (v.type.isSampler() || v.type.match(TBuffer(_))) {
-				trace('Ignoring global ${v.name}');
+//				trace('Ignoring global ${v.name}');
 				continue;
 			}
 			switch (v.type) {

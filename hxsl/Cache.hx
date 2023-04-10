@@ -422,7 +422,7 @@ class Cache {
 
 	function buildRuntimeShader( vertex : ShaderData, fragment : ShaderData, paramVars ) {
 		var r = new RuntimeShader();
-		trace('BUILDING RUNTIME SHADER ${vertex.name} ${fragment.name}');
+//		trace('BUILDING RUNTIME SHADER ${vertex.name} ${fragment.name}');
 		r.vertex = flattenShader(vertex, Vertex, paramVars);
 		r.vertex.vertex = true;
 		r.fragment = flattenShader(fragment, Fragment, paramVars);
@@ -528,7 +528,6 @@ class Cache {
 			case Param:
 				var out = [];
 				var count = 0;
-				trace('G is ${g}');
 				for( a in alloc ) {
 					//trace('\t a is ${a} v is ${a.v}');
 					if( a.v == null ) continue; // padding
@@ -558,14 +557,14 @@ class Cache {
 					textures.push({ t : t, all : out });
 					c.texturesCount += count;
 				case TArray(TVec(4, VFloat), SConst(size)):
-					trace('B PARAMS SIZE ${out[0].name} ${size} ${out.length} ${g.type}');
+//					trace('B PARAMS SIZE ${out[0].name} ${size} ${out.length} ${g.type}');
 					if (c.params == null)
 						c.params = out[0];
 					else 
 						c.params.next = out[0];
 					c.paramsSize += size;
 				case TArray(TMat3x4, SConst(size)):
-					trace('B PARAMS SIZE ${out[0].name} ${size} ${out.length} ${g.type}');
+//					trace('B PARAMS SIZE ${out[0].name} ${size} ${out.length} ${g.type}');
 					if (c.params == null)
 						c.params = out[0];
 					else 
