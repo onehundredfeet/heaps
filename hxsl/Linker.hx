@@ -368,7 +368,8 @@ class Linker {
 				switch( v.kind ) {
 				case Vertex, Fragment:
 					addShader(s.name + "." + (v.kind == Vertex ? "vertex" : "fragment"), v.kind == Vertex, f.expr, priority);
-
+				case Compute:
+					throw "unsupported";
 				case Init:
 					var prio : Array<Int>;
 					var status : Null<Bool> = switch( f.ref.name ) {

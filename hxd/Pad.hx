@@ -323,7 +323,7 @@ class Pad {
 	#if hlsdl
 	function get_serial() {
 		if( index < 0 ) return "Dummy GamePad";
-		#if (flash || hldx || hlsdl || usesys)
+		#if (flash || hldx  || usesys)
 		return d.serial;
 		#elseif js
 		return d.id;

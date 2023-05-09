@@ -715,11 +715,14 @@ class GlslOut {
 			add(e);
 			add("\n\n");
 		}
+		trace('Hey hey!  ${version}');
 
 		if( isES )
 			decl("#version " + (version < 100 ? 100 : version) + (version > 150 ? " es" : ""));
-		else if( version != null )
-			decl("#version " + (version > 150 ? 150 : version));
+		else if( version != null ) {
+			trace('Hey hey!  ${version}');
+			decl("#version 330"  );// > 150 ? 150 : version));
+		}
 		else
 			decl("#version 140"); // OpenGL 3.0
 

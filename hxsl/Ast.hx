@@ -166,6 +166,7 @@ enum FunctionKind {
 	Fragment;
 	Init;
 	Helper;
+	Compute;
 }
 
 enum TGlobal {
