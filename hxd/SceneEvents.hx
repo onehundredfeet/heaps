@@ -432,7 +432,7 @@ class SceneEvents {
 	}
 
 	function onEvent( e : hxd.Event ) {
-		if( !enablePhysicalMouse && e.kind == EMove ) return;
+//		if( !enablePhysicalMouse && e.kind == EMove ) return;
 		pendingEvents.push(e);
 	}
 
