@@ -18,6 +18,9 @@ class HierarchicalWorld extends Object {
 	static inline final UNLOCK_COLOR = 0xFFFFFF;
 	static inline final LOCK_COLOR = 0xFF0000;
 
+	static var loadingQueue : Array<Void -> Void> = [];
+	var loading : Bool = false;
+
 	public var data : WorldData;
 	var bounds : h3d.col.Bounds;
 	var subdivided(default, set) = false;
@@ -38,9 +41,6 @@ class HierarchicalWorld extends Object {
 	public function get_level() {
 		return data.maxDepth - data.depth;
 	}
-
-	var stateAccu = 0.0;
-	var stateCooldown = 0.1;
 
 	function updateGraphics() {
 		if ( debugGraphics == null )
@@ -80,9 +80,8 @@ class HierarchicalWorld extends Object {
 		bounds.addPoint(new h3d.col.Point(halfSize,halfSize, pseudoInfinity));
 		bounds.transform(absPos);
 
-		if ( data.depth != 0 && data.onCreate != null ) {
+		if ( data.depth != 0 && data.onCreate != null )
 			data.onCreate(this);
-		}
 	}
 
 	function init() {
@@ -95,7 +94,7 @@ class HierarchicalWorld extends Object {
 	}
 
 	function canSubdivide() {
-		return true;
+		return !subdivided && !isLeaf();
 	}
 
 	function createNode(parent, data) {
@@ -103,8 +102,14 @@ class HierarchicalWorld extends Object {
 	}
 
 	function subdivide() {
-		if ( subdivided || isLeaf() )
+		if ( subdivided || getScene() == null ) // parent has been removed during dequeuing.
 			return;
+		if ( !loading && data.depth > 0 ) {
+			loading = true;
+			loadingQueue.insert(0, subdivide);
+			return;
+		}
+		loading = false;
 		subdivided = true;
 		var childSize = data.size >> 1;
 		for ( i in 0...2 ) {
@@ -142,7 +147,6 @@ class HierarchicalWorld extends Object {
 	}
 
 	override function syncRec(ctx : h3d.scene.RenderContext) {
-
 		if ( debugGraphics == null && DEBUG ) {
 			createGraphics();
 		} else if ( debugGraphics != null && !DEBUG ) {
@@ -153,19 +157,19 @@ class HierarchicalWorld extends Object {
 		culled = !bounds.inFrustum(ctx.camera.frustum);
 		if ( !isLeaf() ) {
 			var isClose = calcDist(ctx) < data.size * data.subdivPow;
-			if ( (isClose && stateAccu < 0.0) || (!isClose && stateAccu > 0.0) )
-				stateAccu = 0.0;
-			stateAccu += isClose ? ctx.elapsedTime : -ctx.elapsedTime;
-			if ( FULL || stateAccu > stateCooldown ) {
-				stateAccu = 0.0;
-				if ( canSubdivide() )
+			if ( FULL || isClose ) {
+				if ( canSubdivide() && !loading )
 					subdivide();
-			} else if ( !locked && -stateAccu > stateCooldown) {
-				stateAccu = 0.0;
+			} else if ( !locked && !isClose ) {
 				removeSubdivisions();
 			}
 		}
 		super.syncRec(ctx);
+
+		if ( data.depth == 0 && loadingQueue.length > 0 ) {
+			var load = loadingQueue.pop();
+			load();
+		}
 	}
 
 	override function emitRec(ctx : h3d.scene.RenderContext) {
@@ -193,7 +197,10 @@ class HierarchicalWorld extends Object {
 			return;
 		if ( lock )
 			locked = true;
-		subdivide();
+		if ( canSubdivide() ) {
+			loading = true;
+			subdivide();
+		}
 		for ( c in children ) {
 			var node = Std.downcast(c, HierarchicalWorld);
 			if ( node == null )
@@ -274,5 +281,11 @@ class HierarchicalWorld extends Object {
 			if ( node != null )
 				node.remove();
 		}
+	}
+
+	override function onRemove() {
+		if ( data.depth == 0 )
+			loadingQueue = [];
+		super.onRemove();
 	}
 }
