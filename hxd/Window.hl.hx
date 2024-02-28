@@ -805,4 +805,11 @@ class Window {
 	public static function getInstance() : Window {
 		return inst;
 	}
+
+	public function pulseVisibility() {
+		#if hlsdl
+		window.visible = false;
+		window.visible = true;
+		#end
+	}
 }
