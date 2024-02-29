@@ -1710,18 +1710,25 @@ class DX12Driver extends h3d.impl.Driver {
 	var srvTail : Int = 0;
 	var srvThreadLaunched : Bool = false;
 
+	inline function computeSRVBufferDistance() : Int {
+		return (srvHead + (~(srvTail - 1 ) & 0xFF)) & 0xFF;
+	}
+
+	inline function processSRV() {
+		var index = (srvTail + 1) & 0xFF;
+		var args = srvRingBuf[index];
+		Driver.createShaderResourceView(args.res, args.resourceDesc, args.srvAddr);
+		Driver.createSampler(args.samplerDesc, args.samplerAddr);
+		srvTail = index;
+	}
+
 	function runThread() {
 		while(true) {
 			// Check if ring buffer is empty
-			var dist = (srvHead + (~(srvTail - 1 ) & 0xFF)) & 0xFF;
-			if ( dist != 1) {
-				var args = srvRingBuf[(srvTail + 1) & 0xFF];
-				Driver.createShaderResourceView(args.res, args.resourceDesc, args.srvAddr);
-				Driver.createSampler(args.samplerDesc, args.samplerAddr);
-				srvTail = (srvTail + 1) & 0xFF;
-			}
+			if ( computeSRVBufferDistance() != 1 )
+				processSRV();
 			else
-				Sys.sleep(0.000001);
+				Sys.sleep(0);
 		}
 	}
 
@@ -1729,33 +1736,37 @@ class DX12Driver extends h3d.impl.Driver {
 		if (!srvThreadLaunched) {
 			srvThreadLaunched = true;
 			srvRingBuf = hl.CArray.alloc(SrvArgs, 256);
+			#if !console
 			sys.thread.Thread.create(runThread);
+			#end
 		}
 
 		// Check if ring buffer is full
-		while ( ((srvHead + (~(srvTail - 1) & 0xFF)) & 0xFF) == 0 ){};
+		while ( computeSRVBufferDistance() == 0 ) {};
 
 		var srvArgs = srvRingBuf[srvHead];
 
 		if( t.flags.has(Cube) ) {
 			var desc = unsafeCastTo(srvArgs.resourceDesc, TexCubeSRV);
-			desc.dimension = TEXTURECUBE;
-			desc.mipLevels = -1;
 			desc.format = t.t.format;
-			desc.mostDetailedMip = t.startingMip;
+			desc.dimension = TEXTURECUBE;
 			desc.shader4ComponentMapping = ShaderComponentMapping.DEFAULT;
+			desc.mostDetailedMip = t.startingMip;
+			desc.mipLevels = -1;
+			desc.resourceMinLODClamp = 0;
 		} else if( t.flags.has(IsArray) ) {
 			var desc = unsafeCastTo(srvArgs.resourceDesc, Tex2DArraySRV);
-			desc.dimension = TEXTURE2DARRAY;
-			desc.mipLevels = -1;
 			desc.format = t.t.format;
-			desc.arraySize = t.layerCount;
-			desc.mostDetailedMip = t.startingMip;
+			desc.dimension = TEXTURE2DARRAY;
 			desc.shader4ComponentMapping = ShaderComponentMapping.DEFAULT;
+			desc.mostDetailedMip = t.startingMip;
+			desc.mipLevels = -1;
+			desc.firstArraySlice = 0;
+			desc.arraySize = t.layerCount;
+			desc.planeSlice = 0;
+			desc.resourceMinLODClamp = 0;
 		} else if ( t.isDepth() ) {
 			var desc = srvArgs.resourceDesc;
-			desc.dimension = TEXTURE2D;
-			desc.mipLevels = -1;
 			switch (t.format) {
 				case Depth16:
 					desc.format = R16_UNORM;
@@ -1766,15 +1777,21 @@ class DX12Driver extends h3d.impl.Driver {
 				default:
 					throw "Unsupported depth format "+ t.format;
 			}
-			desc.mostDetailedMip = t.startingMip;
+			desc.dimension = TEXTURE2D;
 			desc.shader4ComponentMapping = ShaderComponentMapping.DEFAULT;
+			desc.mostDetailedMip = t.startingMip;
+			desc.mipLevels = -1;
+			desc.planeSlice = 0;
+			desc.resourceMinLODClamp = 0;
 		} else {
 			var desc = srvArgs.resourceDesc;
-			desc.dimension = TEXTURE2D;
-			desc.mipLevels = -1;
 			desc.format = t.t.format;
-			desc.mostDetailedMip = t.startingMip;
+			desc.dimension = TEXTURE2D;
 			desc.shader4ComponentMapping = ShaderComponentMapping.DEFAULT;
+			desc.mostDetailedMip = t.startingMip;
+			desc.mipLevels = -1;
+			desc.planeSlice = 0;
+			desc.resourceMinLODClamp = 0;
 		}
 
 		var desc = srvArgs.samplerDesc;
@@ -1796,6 +1813,10 @@ class DX12Driver extends h3d.impl.Driver {
 		srvArgs.srvAddr = srvAddr;
 		srvArgs.samplerAddr = samplerAddr;
 		srvHead = (srvHead + 1) & 0xFF;
+
+		#if console
+		processSRV();
+		#end
 	}
 
 	function uploadBuffers( buffers : h3d.shader.Buffers, buf : h3d.shader.Buffers.ShaderBuffers, which:h3d.shader.Buffers.BufferKind, shader : hxsl.RuntimeShader.RuntimeShaderData, regs : ShaderRegisters ) {
@@ -2325,7 +2346,7 @@ class DX12Driver extends h3d.impl.Driver {
 	}
 
 	function flushSRV() {
-		while ( (srvHead + (~(srvTail - 1 ) & 0xFF)) & 0xFF != 1 ) {};
+		while ( computeSRVBufferDistance() != 1 ) {};
 	}
 
 	function flushFrame( onResize : Bool = false ) {
