@@ -85,6 +85,11 @@ class Engine {
 			driver = new h3d.impl.VulkanDriver();
 		else
 		#end
+		#if (hlsdl && heaps_metal)
+		if( hxd.Window.USE_METAL )
+			driver = new h3d.impl.MetalDriver();
+		else
+		#end
 		#if js
 		driver = js.Browser.supported ? new h3d.impl.GlDriver(antiAlias) : new h3d.impl.NullDriver();
 		#else

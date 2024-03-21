@@ -93,6 +93,9 @@ class Window {
 	#if heaps_vulkan
 	public static var USE_VULKAN = false;
 	#end
+	#if heaps_metal
+	public static var USE_METAL = true;
+	#end
 	#end
 
 	function new(title:String, width:Int, height:Int, fixed:Bool = false) {
@@ -105,6 +108,9 @@ class Window {
 		var sdlFlags = if (!fixed) sdl.Window.SDL_WINDOW_SHOWN | sdl.Window.SDL_WINDOW_RESIZABLE else sdl.Window.SDL_WINDOW_SHOWN;
 		#if heaps_vulkan
 		if( USE_VULKAN ) sdlFlags |= sdl.Window.SDL_WINDOW_VULKAN;
+		#end
+		#if heaps_metal
+		if( USE_METAL ) sdlFlags |= sdl.Window.SDL_WINDOW_METAL | sdl.Window.SDL_WINDOW_ALLOW_HIGHDPI;
 		#end
 		window = new sdl.Window(title, width, height, sdl.Window.SDL_WINDOWPOS_CENTERED, sdl.Window.SDL_WINDOWPOS_CENTERED, sdlFlags);
 		this.windowWidth = window.width;
