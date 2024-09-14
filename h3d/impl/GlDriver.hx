@@ -128,6 +128,8 @@ class GlDriver extends Driver {
 	var hasMultiIndirect = false;
 	var maxCompressedTexturesSupport = 0;
 
+	public static var hasMultiIndirectCount = false;
+
 	var drawMode : Int;
 	var isIntelGpu : Bool;
 
@@ -140,6 +142,11 @@ class GlDriver extends Driver {
 	public static var outOfMemoryCheck = #if js false #else true #end;
 
 	public function new(antiAlias=0) {
+		#if (hlsdl >= version("1.15.0"))
+		if ( computeEnabled )
+			sdl.Sdl.setGLVersion(4, 3);
+		#end
+
 		#if js
 		canvas = @:privateAccess hxd.Window.getInstance().canvas;
 		var options = {alpha:false,stencil:true,antialias:antiAlias>0};
@@ -169,6 +176,10 @@ class GlDriver extends Driver {
 		isIntelGpu = ~/intel.*graphics/.match(driver);
 		#end
 
+		#if (hlsdl >= version("1.15.0"))
+		hasMultiIndirectCount = gl.hasExtension("GL_ARB_indirect_parameters");
+		#end
+
 		#if hlmesa
 		hasMultiIndirect = true;
 		maxCompressedTexturesSupport = 7;
@@ -195,6 +206,11 @@ class GlDriver extends Driver {
 			shaderVersion = Math.round( Std.parseFloat(reg.matched(0)) * 100 );
 		}
 
+		#if (hlsdl >= version("1.15.0"))
+		if ( computeEnabled )
+			shaderVersion = 430;
+		#end
+
 		drawMode = GL.TRIANGLES;
 
 		#if js
@@ -219,9 +235,10 @@ class GlDriver extends Driver {
 	}
 
 	#if hlsdl
+	static var computeEnabled : Bool = false;
 	public static function enableComputeShaders() {
 		#if (hlsdl >= version("1.15.0"))
-		sdl.Sdl.setGLVersion(4, 3);
+		computeEnabled = true;
 		#else
 		throw "enableComputeShaders() requires hlsdl 1.15+";
 		#end
@@ -1546,6 +1563,12 @@ class GlDriver extends Driver {
 		#if !js
 		if( hasMultiIndirect && commands.data != null ) {
 			gl.bindBuffer(GL.DRAW_INDIRECT_BUFFER, commands.data);
+			#if (hlsdl >= version("1.15.0"))
+			if ( commands.countBuffer != null && hasMultiIndirectCount ) {
+				gl.bindBuffer(GL.PARAMETER_BUFFER, commands.countBuffer);
+				gl.multiDrawElementsIndirectCount(drawMode, kind, null, null, commands.commandCount, 0);
+			} else
+			#end
 			gl.multiDrawElementsIndirect(drawMode, kind, null, commands.commandCount, 0);
 			gl.bindBuffer(GL.DRAW_INDIRECT_BUFFER, null);
 			return;
@@ -1696,6 +1719,7 @@ class GlDriver extends Driver {
 			gl.framebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, tex.flags.has(Cube) ? CUBE_FACES[layer] : GL.TEXTURE_2D, tex.t.t, mipLevel);
 
 		setPolygonOffset( tex.depthBuffer );
+		setDepthClamp( tex.depthBuffer );
 
 		if( tex.depthBuffer != null && depthBinding != NotBound ) {
 			// Depthbuffer and stencilbuffer are combined in one buffer, created with GL.DEPTH_STENCIL
@@ -1775,6 +1799,7 @@ class GlDriver extends Driver {
 		gl.framebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, null, 0);
 
 		setPolygonOffset( depthBuffer );
+		setDepthClamp( depthBuffer );
 
 		if(depthBuffer.hasStencil() && depthBuffer.format == Depth24Stencil8) {
 			gl.framebufferTexture2D(GL.FRAMEBUFFER, GL.DEPTH_STENCIL_ATTACHMENT, GL.TEXTURE_2D,@:privateAccess depthBuffer.t.t, 0);
@@ -1789,11 +1814,6 @@ class GlDriver extends Driver {
 		gl.viewport(0, 0, w, h);
 		for( i in 0...boundTextures.length )
 			boundTextures[i] = null;
-
-		// if( !tex.flags.has(WasCleared) ) {
-		// 	tex.flags.set(WasCleared); // once we draw to, do not clear again
-		// 	clear(BLACK);
-		// }
 
 		#if js
 		if( glDebug ) {
@@ -1811,6 +1831,15 @@ class GlDriver extends Driver {
 		}
 		else
 			gl.disable(GL.POLYGON_OFFSET_FILL);
+	}
+
+	function setDepthClamp( dephTexture : h3d.mat.Texture ) {
+		#if !js
+		if ( dephTexture != null && dephTexture.depthClamp )
+			gl.enable(GL.DEPTH_CLAMP);
+		else
+			gl.disable(GL.DEPTH_CLAMP);
+		#end
 	}
 
 	override function init( onCreate : Bool -> Void, forceSoftware = false ) {

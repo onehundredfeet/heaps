@@ -31,7 +31,6 @@ class Checker {
 	var curFun : TFunction;
 	var inLoop : Bool;
 	var inWhile : Bool;
-	var inCompute : Bool;
 	public var inits : Array<{ v : TVar, e : TExpr }>;
 
 	public function new() {
@@ -173,7 +172,7 @@ class Checker {
 				[{ args : [{ name : "screenPos", type : vec2 }], ret : vec2 }];
 			case UvToScreen:
 				[{ args : [{ name : "uv", type : vec2 }], ret : vec2 }];
-			case Trace:
+			case Trace, GroupMemoryBarrier:
 				[];
 			case FloatBitsToInt, FloatBitsToUint:
 				[for( i => t in genType ) { args : [ { name: "x", type: t } ], ret: genIType[i] }];
@@ -189,6 +188,8 @@ class Checker {
 				[];
 			case VertexID, InstanceID, FragCoord, FrontFacing:
 				null;
+			case AtomicAdd:
+				[{ args : [{ name : "buf", type : TBuffer(TInt, SConst(0), RW) },{ name : "index", type : TInt }, { name : "data", type : TInt }], ret : TInt }];
 			case _ if( g.getName().indexOf("_") > 0 ):
 				var name = g.getName();
 				var idx = name.indexOf("_");
@@ -282,7 +283,6 @@ class Checker {
 			case "main": Main;
 			default: StringTools.startsWith(f.name,"__init__") ? Init : Helper;
 			}
-			inCompute = kind == Main;
 			if( args.length != 0 && kind != Helper )
 				error(kind+" function should have no argument", pos);
 			var fv : TVar = {
@@ -358,7 +358,7 @@ class Checker {
 	}
 
 	function tryUnify( t1 : Type, t2 : Type ) {
-		if( t1 == t2 )
+		if( t1.equals(t2) )
 			return true;
 		switch( [t1, t2] ) {
 		case [TVec(s1, t1), TVec(s2, t2)] if( s1 == s2 && t1 == t2 ):
@@ -408,7 +408,7 @@ class Checker {
 				return;
 			default:
 			}
-		case TSwiz(e, _):
+		case TSwiz(e, _), TField(e, _):
 			checkWrite(e);
 			return;
 		case TArray(e, _):
@@ -501,7 +501,7 @@ class Checker {
 			var v = vars.get(name);
 			if( v != null ) {
 				var canCall =  switch( name ) {
-				case "vertex", "fragment": false;
+				case "vertex", "fragment", "main": false;
 				default: !StringTools.startsWith(name,"__init__");
 				}
 				if( !canCall )
@@ -709,7 +709,7 @@ class Checker {
 			var e2 = typeExpr(e2, With(TInt));
 			unify(e2.t, TInt, e2.p);
 			switch( e1.t ) {
-			case TArray(t, size), TBuffer(t,size,_):
+			case TArray(t, size), TBuffer(t,size, Uniform), TBuffer(t,size, Partial):
 				switch( [size, e2.e] ) {
 				case [SConst(v), TConst(CInt(i))] if( i >= v ):
 					error("Indexing outside array bounds", e.pos);
@@ -718,12 +718,18 @@ class Checker {
 				default:
 				}
 				type = t;
+			case TBuffer(t, size, _):
+				type = t;
 			case TMat2:
 				type = vec2;
 			case TMat3:
 				type = vec3;
 			case TMat4, TMat3x4:
 				type = vec4;
+			case TVec(_, VFloat):
+				type = TFloat;
+			case TVec(_, VInt):
+				type = TInt;
 			default:
 				error("Cannot index " + e1.t.toString() + " : should be an array", e.pos);
 			}
@@ -1039,7 +1045,6 @@ class Checker {
 			}
 			if( gl != null ) {
 				if( f == "get" && inWhile ) error("Cannot use .get() in while loop, use .getLod instead", pos);
-				if( f == "get" && inCompute ) error("Cannot use .get() in a compute shader, use .getLod instead", pos);
 				g = globals.get(gl.toString());
 			}
 		}

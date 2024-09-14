@@ -92,7 +92,9 @@ class LocalEntry extends FileEntry {
 			case ".tmp" if( this == fs.root ):
 				continue;
 			default:
-				arr.push(fs.open(relPath == null ? f : relPath + "/" + f,false));
+				var entry = fs.open(relPath == null ? f : relPath + "/" + f,false);
+				if( entry != null )
+					arr.push(entry);
 			}
 		}
 		return new hxd.impl.ArrayIterator(arr);
@@ -381,8 +383,11 @@ class LocalFileSystem implements FileSystem {
 			throw new NotFound(baseDir + path);
 		var files = sys.FileSystem.readDirectory(baseDir + path);
 		var r : Array<FileEntry> = [];
-		for(f in files)
-			r.push(open(path + "/" + f, false));
+		for(f in files) {
+			var entry = open(path + "/" + f, false);
+			if( entry != null )
+				r.push(entry);
+		}
 		return r;
 	}
 

@@ -13,11 +13,14 @@ class HMDModel extends MeshPrimitive {
 	var collider : h3d.col.Collider;
 	var normalsRecomputed : String;
 	var blendshape : Blendshape;
+	var lodConfig : Array<Float> = null;
 
-	public function new( data : hxd.fmt.hmd.Data.Geometry, dataPos, lib, lods = null ) {		
+	public static var lodExportKeyword : String = "LOD";
+
+	public function new( data : hxd.fmt.hmd.Data.Geometry, dataPos, lib, lods = null ) {
 		this.lods = [data];
 		if (lods != null)
-			this.lods = this.lods.concat(lods);			
+			this.lods = this.lods.concat(lods);
 		this.dataPosition = dataPos;
 		this.lib = lib;
 
@@ -77,31 +80,45 @@ class HMDModel extends MeshPrimitive {
 		var is32 : Bool = vertexCount > 0x10000;
 		indexes = new h3d.Indexes(indexCount, is32);
 		var indexStride : Int = (is32 ? 4 : 2);
-		
+
 		var entry = lib.resource.entry;
 		var curVertexCount : Int = 0;
 		var curIndexCount : Int = 0;
-		
-		for ( lod in lods ) {
-			if (lod.vertexFormat != vertexFormat)
-				throw "LOD has a different vertex format";
-			
+
+		for ( i => lod in lods ) {
+			if (lod.vertexFormat != vertexFormat) {
+				var error = 'LOD${i} has a different vertex format, has ';
+				for ( input in lod.vertexFormat.getInputs() )
+					error += input.name + " ";
+				error += ", wants ";
+				for ( input in vertexFormat.getInputs() )
+					error += input.name + " ";
+				throw error;
+			}
+
 			var size = lod.vertexCount * vertexFormat.strideBytes;
-			var bytes = entry.fetchBytes(dataPosition + lod.vertexPosition, size);			
+			var bytes = entry.fetchBytes(dataPosition + lod.vertexPosition, size);
 			engine.driver.uploadBufferBytes(buffer, curVertexCount, lod.vertexCount, bytes, 0);
 
 			var indexCount = lod.indexCount;
-			size = indexStride * indexCount;
-			var bytes = entry.fetchBytes(dataPosition + lod.indexPosition, size);
-			if ( curIndexCount != 0 ) {
-				if (is32)
-					for ( i in 0...indexCount )
-						bytes.setInt32(i << 2, bytes.getInt32(i << 2) + curVertexCount);
-				else 
-					for ( i in 0...indexCount )
-						bytes.setUInt16(i << 1, bytes.getUInt16(i << 1) + curVertexCount);
-			}
-			engine.driver.uploadBufferBytes(indexes, curIndexCount, indexCount, bytes, 0);
+			var lodIs32 = ( lod.vertexCount > 0x10000 );
+			size = ( lodIs32 ? 4 : 2 ) * indexCount;
+
+			var inBytes = entry.fetchBytes(dataPosition + lod.indexPosition, size);
+			var outBytes = ( is32 != lodIs32 ) ? haxe.io.Bytes.alloc( indexCount * indexStride ) : inBytes;
+			if (is32)
+				for ( i in 0...indexCount )
+					if ( lodIs32 )
+						outBytes.setInt32(i << 2, inBytes.getInt32(i << 2) + curVertexCount);
+					else
+						outBytes.setInt32(i << 2, inBytes.getUInt16(i << 1) + curVertexCount);
+			else
+				for ( i in 0...indexCount )
+					if ( lodIs32 )
+						outBytes.setUInt16(i << 1, inBytes.getInt32(i << 2) + curVertexCount);
+					else
+						outBytes.setUInt16(i << 1, inBytes.getUInt16(i << 1) + curVertexCount);
+			engine.driver.uploadBufferBytes(indexes, curIndexCount, indexCount, outBytes, 0);
 
 			curVertexCount += lod.vertexCount;
 			curIndexCount += indexCount;
@@ -129,7 +146,7 @@ class HMDModel extends MeshPrimitive {
 			var ids = new Array();
 			var pts : Array<h3d.col.Point> = [];
 			var mpts = new Map();
-	
+
 			for( i in 0...lod.vertexCount ) {
 				var added = false;
 				var px = pos.vertexes[i * 3];
@@ -156,14 +173,14 @@ class HMDModel extends MeshPrimitive {
 					pts.push(new h3d.col.Point(px,py,pz));
 				}
 			}
-	
+
 			var idx = new hxd.IndexBuffer();
 			for( i in pos.indexes )
 				idx.push(ids[i]);
-	
+
 			var pol = new Polygon(pts, idx);
 			pol.addNormals();
-	
+
 			var startOffset : Int = v.length;
 			v.grow(lod.vertexCount*3);
 			var k = 0;
@@ -211,7 +228,7 @@ class HMDModel extends MeshPrimitive {
 			var pol = new Polygon(pts, idx);
 			pol.addNormals();
 			pol.addTangents();
-	
+
 			var startOffset : Int = v.length;
 			v.grow(lod.vertexCount*3);
 			var k = 0;
@@ -222,7 +239,7 @@ class HMDModel extends MeshPrimitive {
 				v[startOffset + k++] = t.z;
 			}
 		}
-		
+
 		var buf = h3d.Buffer.ofFloats(v, hxd.BufferFormat.make([{ name : "tangent", type : DVec3 }]));
 		addBuffer(buf);
 	}
@@ -270,35 +287,43 @@ class HMDModel extends MeshPrimitive {
 		initCollider(poly);
 		return collider;
 	}
-		
+
 	override public function lodCount() : Int {
 		return lods.length;
-	}
-	
-	public static var lodExportKeyword : String = "LOD";
-	static var lodConfig : Array<Float> = [0.02, 0.002, 0.0002];
-	public static function loadLodConfig( config : Array<Float> ) {
-		lodConfig = config;
 	}
 
 	override public function screenRatioToLod( screenRatio : Float ) : Int {
 		var lodCount = lodCount();
 
+		#if editor
+		if (forcedLod >= 0)
+			return hxd.Math.imin(forcedLod, lodCount);
+		#end
+
 		if ( lodCount == 1 )
 			return 0;
 
+		lodConfig = getLodConfig();
 		if ( lodConfig != null && lodConfig.length >= lodCount - 1) {
-			var lodLevel : Int = 0; 
+			var lodLevel : Int = 0;
 			var maxIter = ( ( lodConfig.length > lodCount - 1 ) ? lodCount - 1: lodConfig.length );
 			for ( i in 0...maxIter ) {
 				if ( lodConfig[i] > screenRatio )
 					lodLevel++;
-				else 
+				else
 					break;
 			}
 			return lodLevel;
 		}
 
 		return 0;
+	}
+
+	public function getLodConfig() {
+		if (lodConfig != null)
+			return lodConfig;
+
+		var d = lib.resource.entry.directory;
+		return @:privateAccess ModelDatabase.current.getDefaultLodConfig(d);
 	}
 }

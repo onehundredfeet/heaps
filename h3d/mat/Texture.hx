@@ -22,9 +22,7 @@ class Texture {
 
 	var t : h3d.impl.Driver.Texture;
 	var mem : h3d.impl.MemoryManager;
-	#if track_alloc
 	var allocPos : hxd.impl.AllocPos;
-	#end
 	public var id(default, null) : Int;
 	public var name(default, null) : String;
 	public var width(default, null) : Int;
@@ -44,6 +42,7 @@ class Texture {
 	public var mipLevels(get, never) : Int;
 	public var depthBias : Float = 0.;
 	public var slopeScaledBias : Float = 0.;
+	public var depthClamp : Bool = false;
 	var customMipLevels : Int;
 
 	/**
@@ -116,9 +115,7 @@ class Texture {
 		this.filter = Linear;
 		this.wrap = DEFAULT_WRAP;
 		bits &= 0x7FFF;
-		#if track_alloc
-		this.allocPos = new hxd.impl.AllocPos();
-		#end
+		this.allocPos = hxd.impl.AllocPos.make();
 		if( !this.flags.has(NoAlloc) && (!isDepth() || width > 0) ) alloc();
 	}
 
@@ -195,9 +192,7 @@ class Texture {
 		var str = name;
 		if( name == null ) {
 			str = "Texture_" + id;
-			#if track_alloc
 			if( allocPos != null ) str += "(" + allocPos.position + ")";
-			#end
 		}
 		return str+"("+width+"x"+height+")";
 	}
@@ -372,7 +367,7 @@ class Texture {
 	/**
 		Creates a 1x1 texture using the RGB color passed as parameter.
 	**/
-	public static function fromColor( color : Int, ?alpha = 1. ) {
+	public static function fromColor( color : Int, alpha = 1. ) {
 		var engine = h3d.Engine.getCurrent();
 		var aval = Std.int(alpha * 255);
 		if( aval < 0 ) aval = 0 else if( aval > 255 ) aval = 255;

@@ -3,6 +3,14 @@ package hxd.fmt.fbx;
 import hxd.fmt.fbx.Data;
 import hxd.fmt.hmd.Data;
 
+typedef ExportParams = {
+	forward: String,
+	forwardSign: String,
+	up: String,
+	upSign: String,
+}
+
+
 class Writer {
 	var out: haxe.io.Output;
 
@@ -81,28 +89,30 @@ class Writer {
 
 			case PInts(v):
 				{
-					var res = '*${v.length} {\n';
-					res += '${getTabFormat(depth + 1)}a: ';
+					var strBuf : StringBuf = new StringBuf();
+					strBuf.add('*${v.length} {\n');
+					strBuf.add('${getTabFormat(depth + 1)}a: ');
 
 					for (idx => i in v) {
-						res += '${idx != 0 ? ',' : ''}${i}';
+						strBuf.add('${idx != 0 ? ',' : ''}${i}');
 					}
 
-					res += '\n${getTabFormat(depth)}}';
-					return res;
+					strBuf.add('\n${getTabFormat(depth)}}');
+					return strBuf.toString();
 				}
 
 			case PFloats(v):
 				{
-					var res = '*${v.length} {\n';
-					res += '${getTabFormat(depth + 1)}a: ';
+					var strBuf : StringBuf = new StringBuf();
+					strBuf.add('*${v.length} {\n');
+					strBuf.add('${getTabFormat(depth + 1)}a: ');
 
 					for (idx => i in v) {
-						res += '${idx != 0 ? ',' : ''}${i}';
+						strBuf.add('${idx != 0 ? ',' : ''}${i}');
 					}
 
-					res += '\n${getTabFormat(depth)}}';
-					return res;
+					strBuf.add('\n${getTabFormat(depth)}}');
+					return strBuf.toString();
 				}
 
 			default:
@@ -535,7 +545,7 @@ class Writer {
 				// We have to flip the order of vertex to change the facing direction of the triangle (because we changed X axis
 				// sign earlier to change from left hand to right hand)
 
-				// /!\ Last vertex index This is because the last index that close the polygon (in our case, we work with triangles, so the third)
+				// /!\ This is because the last index that close the polygon (in our case, we work with triangles, so the third)
 				// need to be increased by one and then set to negative.
 				// (This is because original index is XOR'ed with -1.)
 				indexes.push(bufs.indexes[idxIndex + 1]);
@@ -548,7 +558,6 @@ class Writer {
 			var meshMaterials = mesh.getMaterials();
 			var mats = new Array<Int>();
 			for (idx => mat in meshMaterials ) {
-				var hmdModel = Std.downcast(mesh.primitive, h3d.prim.HMDModel);
 				var materialId = -1;
 
 				// Only write material once in the fbx file
@@ -784,5 +793,73 @@ class Writer {
 		out = old;
 
 		out.write(bytes);
+	}
+
+	public function export(toExport: Array<h3d.scene.Object>, destinationPath: String, callb : Void -> Void, ?params : ExportParams) {
+		if (this.out == null)
+			this.out = new haxe.io.BytesOutput();
+
+		function clean( obj : h3d.scene.Object ) : h3d.scene.Object {
+			if (Std.isOfType(obj, h3d.scene.Interactive) ||
+				#if hide Std.isOfType(obj, hrt.prefab.fx.Emitter.EmitterObject) || #end
+				!obj.visible)
+				return null;
+
+			var o = new h3d.scene.Object();
+			var multiMat = Std.downcast(obj, h3d.scene.MultiMaterial);
+			if (multiMat != null)
+				o = new h3d.scene.MultiMaterial(multiMat.primitive, multiMat.materials);
+			else {
+				var m = Std.downcast(obj, h3d.scene.Mesh);
+				var hmd = Std.downcast(m?.primitive, h3d.prim.HMDModel);
+
+				if (hmd != null)
+					o = new h3d.scene.Mesh(m.primitive, m.material);
+			}
+
+			o.x = obj.x;
+			o.y = obj.y;
+			o.z = obj.z;
+			o.scaleX = obj.scaleX;
+			o.scaleY = obj.scaleY;
+			o.scaleZ = obj.scaleZ;
+			@:privateAccess o.qRot.load(@:privateAccess obj.qRot);
+			o.name = obj.name;
+			o.follow = obj.follow;
+			o.followPositionOnly = obj.followPositionOnly;
+			o.visible = obj.visible;
+			if( obj.defaultTransform != null )
+				o.defaultTransform = obj.defaultTransform.clone();
+			for( c in @:privateAccess obj.children ) {
+				var c2 = clean(c);
+				if (c2 == null)
+					continue;
+				@:privateAccess c2.parent = o;
+				@:privateAccess o.children.push(c2);
+			}
+
+			return o;
+		}
+
+		// Clean a bit the object hierarchy to remove non-needed objects
+		// (Interactibles for example)
+		var roots = new Array<h3d.scene.Object>();
+		for (o in toExport) {
+			var t = clean(o);
+			if (t != null)
+				roots.push(t);
+		}
+
+		// Handle the export of selection into a fbx file
+		if (destinationPath != null) {
+			var out = new haxe.io.BytesOutput();
+			new hxd.fmt.fbx.Writer(out).write(roots, params);
+			#if js
+				hxd.File.saveBytes(destinationPath, out.getBytes());
+			#else
+				sys.io.File.saveBytes(destinationPath, out.getBytes());
+			#end
+			callb();
+		}
 	}
 }

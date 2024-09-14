@@ -275,18 +275,22 @@ class Library {
 		var lodInfos = getLODInfos( model );
 		if ( lodInfos.lodLevel > 0) {
 			for ( m in header.models )
-				if ( StringTools.contains(m.name, lodInfos.modelName) && StringTools.contains(m.name, "LOD0"))
+				if ( m.name != null && StringTools.contains(m.name, lodInfos.modelName) && StringTools.contains(m.name, "LOD0"))
 					return null;
 			throw "No LOD0 found for " + lodInfos.modelName + " in " + resource.name;
 		}
 
 		var lods : Array<Geometry> = null;
 		if (lodInfos.lodLevel == 0 )
-			lods = findLODs( lodInfos.modelName );
+			lods = findLODs( lodInfos.modelName, model.materials.length );
 
 		p = new h3d.prim.HMDModel(header.geometries[id], header.dataPosition, this, lods);
 		p.incref(); // Prevent from auto-disposing
 		cachedPrimitives[id] = p;
+
+		if (lodInfos.lodLevel == 0)
+			h3d.prim.ModelDatabase.current.loadModelProps(model.name, p);
+
 		return p;
 	}
 
@@ -310,8 +314,8 @@ class Library {
 			try {
 				if ( setupMaterialLibrary(loadTexture, mat, hxd.res.Loader.currentInstance.load((props:Dynamic).__ref).toPrefab(), (props:Dynamic).name) )
 					return mat;
-			} catch( e : Dynamic ) {
-			}
+			} catch( e : Dynamic ) {}
+			props = mat.getDefaultModelProps();
 		}
 		#end
 		if( m.diffuseTexture != null ) {
@@ -378,7 +382,7 @@ class Library {
 		return def;
 	}
 
-	function getLODInfos( model : Model ) : { lodLevel : Int , modelName : String } {
+	public function getLODInfos( model : Model ) : { lodLevel : Int , modelName : String } {
 		var modelName : String = model.name;
 		var keyword = h3d.prim.HMDModel.lodExportKeyword;
 		if ( modelName == null || modelName.length <= keyword.length )
@@ -406,7 +410,7 @@ class Library {
 		return { lodLevel : -1, modelName : null };
 	}
 
-	function findLODs( modelName : String ) : Array<Geometry> {
+	public function findLODs( modelName : String, materialCount : Int ) : Array<Geometry> {
 		if ( modelName == null )
 			return null;
 
@@ -416,11 +420,17 @@ class Library {
 			if ( lodInfos.lodLevel < 1 )
 				continue;
 			if ( lodInfos.modelName == modelName ) {
-				var capacityNeeded = lodInfos.lodLevel;
-				if ( capacityNeeded > lods.length )
-					lods.resize(capacityNeeded);
 				if ( lods[lodInfos.lodLevel - 1] != null )
 					throw 'Multiple LODs with the same level : ${curModel.name}';
+				var geom = header.geometries[curModel.geometry];
+				if ( geom.indexCounts.length != materialCount ) {
+					var indexCounts = [];					
+					for ( i in 0...materialCount )
+						indexCounts[i] = 0;
+					for ( i => m in curModel.materials )
+						indexCounts[m] = geom.indexCounts[i];
+					geom.indexCounts = indexCounts;
+				}
 				lods[lodInfos.lodLevel - 1] = header.geometries[curModel.geometry];
 			}
 		}
@@ -720,7 +730,7 @@ class Library {
 				var vidx = data.indexes[idx];
 				var p = vidx * formatStride;
 				var x = vbuf[p];
-				if( x != x ) {
+				if( Math.isNaN(x) ) {
 					// already processed
 					continue;
 				}
